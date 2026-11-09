@@ -1,0 +1,38 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<style>
+:root { --fs: 14px; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; -webkit-text-size-adjust: 100%; }
+#editor { position: fixed; inset: 0; }
+.cm-editor { font-size: var(--fs); }
+.cm-editor.cm-focused { outline: none; }
+.cf-line-error { background: var(--errbg); box-shadow: inset 3px 0 0 var(--err); }
+.cf-line-warning { background: var(--warnbg); box-shadow: inset 3px 0 0 var(--warn); }
+.cf-dot { font-size: 9px; line-height: 1; vertical-align: middle; }
+.cf-dot.cf-error { color: var(--err); } .cf-dot.cf-warning { color: var(--warn); }
+.cf-label { margin-left: 1.4em; padding: 1px 7px; border-radius: 4px; font: 500 .78em/1.4 -apple-system, system-ui, sans-serif; white-space: nowrap; }
+.cf-label.cf-error { color: var(--err); background: var(--errbg); }
+.cf-label.cf-warning { color: var(--warn); background: var(--warnbg); }
+@media (max-width: 600px) { .cf-label { display: none; } }
+#errbar { position: fixed; left: 0; right: 0; bottom: 0; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); background: var(--bar); border-top: 1px solid var(--border);
+  font: 14px/1.35 -apple-system, system-ui, sans-serif; color: var(--fg); transform: translateY(120%); transition: transform .18s ease; z-index: 5; }
+#errbar.show { transform: none; }
+#errbar .row { display: flex; gap: 10px; padding: 5px 0; }
+#errbar .row b { flex: none; font-weight: 600; min-width: 56px; }
+#errbar .row.error b { color: var(--err); } #errbar .row.warning b { color: var(--warn); }
+#keys { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: flex; gap: 6px; padding: 6px 8px; background: var(--bar); border-top: 1px solid var(--border);
+  overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; opacity: 0; pointer-events: none; transition: opacity .12s; }
+#keys.up { opacity: 1; pointer-events: auto; }
+#keys::-webkit-scrollbar { display: none; }
+#keys button { flex: none; min-width: 38px; height: 36px; border: 0; border-radius: 7px; background: var(--line); color: var(--fg); font: 600 17px ui-monospace, Menlo, monospace; }
+#keys button.wide { min-width: 44px; color: var(--accent); }
+#keys button:active { background: var(--sel); }
+</style></head>
+<body>
+<div id="editor"></div>
+<div id="errbar"></div>
+<div id="keys"></div>
+<script type="module" src="app.js"></script>
+</body></html>

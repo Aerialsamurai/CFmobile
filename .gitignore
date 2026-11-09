@@ -1,0 +1,8 @@
+node_modules/
+Web/dist/
+CFPhone/web/
+CFPhone.xcodeproj/
+build/
+*.ipa
+spike/
+.DS_Store

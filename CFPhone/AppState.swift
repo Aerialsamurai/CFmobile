@@ -1,0 +1,285 @@
+import Foundation
+import SwiftUI
+
+let defaultTemplate = """
+#include <bits/stdc++.h>
+using namespace std;
+
+#define int long long
+
+void solve() {
+    
+}
+
+signed main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+    int t = 1;
+    cin >> t;
+    while (t--) solve();
+    return 0;
+}
+
+"""
+
+@MainActor
+final class AppState: ObservableObject {
+    let settings: Settings
+
+    // boot
+    @Published var bootError: String?
+    @Published var editor: EditorHost?
+    @Published var engine: EngineHost?
+
+    // problems
+    @Published var problems: [Problem] = []
+    @Published var currentID: String = "scratch"
+
+    // compile / run
+    @Published var compiling = false
+    @Published var diagnostics: [Diagnostic] = []
+    @Published var results: [UUID: TestResult] = [:]
+    @Published var runningAll = false
+    @Published var lastCompileMs: Int?
+
+    // cross-tab requests
+    @Published var selectedTab = 0
+    @Published var submissionsNeedRefresh = 0
+
+    private var server: LocalServer?
+    private var code = ""
+    private var compiledCode: String?
+    private var saveTask: Task<Void, Never>?
+
+    init(settings: Settings) {
+        self.settings = settings
+        loadProblems()
+    }
+
+    // MARK: - Paths
+
+    private var supportDir: URL {
+        let u = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("cfphone", isDirectory: true)
+        try? FileManager.default.createDirectory(at: u, withIntermediateDirectories: true)
+        return u
+    }
+    private var codeDir: URL {
+        let u = supportDir.appendingPathComponent("code", isDirectory: true)
+        try? FileManager.default.createDirectory(at: u, withIntermediateDirectories: true)
+        return u
+    }
+    private var problemsFile: URL { supportDir.appendingPathComponent("problems.json") }
+    /// Lives in the app's Documents folder, which shows up in the Files app (On My iPhone ▸ CF Phone).
+    var templateURL: URL { FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("template.cpp") }
+
+    // MARK: - Boot
+
+    func boot() async {
+        guard editor == nil else { return }
+        guard let web = Bundle.main.url(forResource: "web", withExtension: nil) else {
+            bootError = "App is missing its web files (build problem)."; return
+        }
+        if !FileManager.default.fileExists(atPath: templateURL.path) { saveTemplate(defaultTemplate) }
+        do {
+            let s = LocalServer(root: web)
+            let port = try await s.start()
+            server = s
+            let base = URL(string: "http://127.0.0.1:\(port)/")!
+            let ed = EditorHost(base: base)
+            ed.onCode = { [weak self] c in Task { @MainActor in self?.codeChanged(c) } }
+            editor = ed
+            engine = EngineHost(base: base)
+            ed.setTheme(settings.theme)
+            ed.setFontSize(settings.fontSize)
+            openProblem(currentID)
+        } catch {
+            bootError = "Could not start local server: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - Template
+
+    func loadTemplate() -> String {
+        if let t = try? String(contentsOf: templateURL, encoding: .utf8), !t.isEmpty { return t }
+        return defaultTemplate
+    }
+
+    func saveTemplate(_ text: String) { try? text.write(to: templateURL, atomically: true, encoding: .utf8) }
+
+    func importTemplate(from url: URL) -> Bool {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        guard let t = try? String(contentsOf: url, encoding: .utf8) else { return false }
+        saveTemplate(t)
+        return true
+    }
+
+    // MARK: - Problems
+
+    var current: Problem {
+        problems.first { $0.id == currentID } ?? problems[0]
+    }
+
+    private func loadProblems() {
+        if let d = try? Data(contentsOf: problemsFile), let p = try? JSONDecoder().decode([Problem].self, from: d), !p.isEmpty {
+            problems = p
+        }
+        if !problems.contains(where: { $0.id == "scratch" }) {
+            problems.insert(Problem(id: "scratch", title: "Scratch pad", url: "", timeLimitMs: 4000, tests: [], contestId: nil, index: nil, updated: Date()), at: 0)
+        }
+    }
+
+    private func persistProblems() {
+        if let d = try? JSONEncoder().encode(problems) { try? d.write(to: problemsFile) }
+    }
+
+    private func codeFile(_ id: String) -> URL { codeDir.appendingPathComponent("\(id).cpp") }
+
+    func openProblem(_ id: String) {
+        guard problems.contains(where: { $0.id == id }) else { return }
+        flushSave()
+        currentID = id
+        let text = (try? String(contentsOf: codeFile(id), encoding: .utf8)) ?? loadTemplate()
+        code = text
+        compiledCode = nil
+        results = [:]
+        diagnostics = []
+        editor?.setCode(text)
+        if !FileManager.default.fileExists(atPath: codeFile(id).path) { try? text.write(to: codeFile(id), atomically: true, encoding: .utf8) }
+    }
+
+    func codeChanged(_ c: String) {
+        code = c
+        saveTask?.cancel()
+        saveTask = Task { [id = currentID] in
+            try? await Task.sleep(nanoseconds: 600_000_000)
+            if Task.isCancelled { return }
+            try? c.write(to: self.codeFile(id), atomically: true, encoding: .utf8)
+        }
+    }
+
+    private func flushSave() {
+        saveTask?.cancel()
+        if !code.isEmpty { try? code.write(to: codeFile(currentID), atomically: true, encoding: .utf8) }
+    }
+
+    func addImported(_ ip: ImportedProblem, contestId: Int, index: String, url: String) {
+        let id = "\(contestId)\(index)"
+        var tests: [TestCase] = []
+        let ins = ip.inputs ?? [], outs = ip.outputs ?? []
+        for i in 0..<min(ins.count, outs.count) { tests.append(TestCase(input: ins[i], expected: outs[i], isSample: true)) }
+        let title = "\(contestId)\(index) · \(ip.title ?? "Problem")"
+        if let i = problems.firstIndex(where: { $0.id == id }) {
+            // keep the user's custom tests, refresh samples
+            let custom = problems[i].tests.filter { !$0.isSample }
+            problems[i].tests = tests + custom
+            problems[i].title = title
+            problems[i].timeLimitMs = ip.timeLimitMs ?? 2000
+            problems[i].updated = Date()
+        } else {
+            problems.insert(Problem(id: id, title: title, url: url, timeLimitMs: ip.timeLimitMs ?? 2000, tests: tests,
+                                    contestId: contestId, index: index, updated: Date()), at: 1)
+        }
+        persistProblems()
+        openProblem(id)
+        selectedTab = 0
+    }
+
+    func deleteProblem(_ id: String) {
+        guard id != "scratch" else { return }
+        problems.removeAll { $0.id == id }
+        try? FileManager.default.removeItem(at: codeFile(id))
+        persistProblems()
+        if currentID == id { openProblem("scratch") }
+    }
+
+    func updateCurrent(_ change: (inout Problem) -> Void) {
+        guard let i = problems.firstIndex(where: { $0.id == currentID }) else { return }
+        change(&problems[i])
+        persistProblems()
+    }
+
+    func addCustomTest(input: String, expected: String) {
+        updateCurrent { $0.tests.append(TestCase(input: input, expected: expected, isSample: false)) }
+    }
+
+    func deleteTest(_ id: UUID) {
+        updateCurrent { $0.tests.removeAll { $0.id == id } }
+        results[id] = nil
+    }
+
+    // MARK: - Theme / font push
+
+    func applyAppearance() {
+        editor?.setTheme(settings.theme)
+        editor?.setFontSize(settings.fontSize)
+    }
+
+    // MARK: - Compile / run
+
+    func sourceNow() async -> String {
+        if let c = await editor?.currentCode() { code = c; return c }
+        return code
+    }
+
+    @discardableResult
+    func compile() async -> Bool {
+        guard let engine = engine else { return false }
+        let src = await sourceNow()
+        if compiledCode == src { return true }
+        compiling = true
+        defer { compiling = false }
+        do {
+            let r = try await engine.compile(src, std: settings.std, checks: settings.checks)
+            lastCompileMs = r.ms
+            diagnostics = r.diagnostics
+            if r.ok { compiledCode = src } else { compiledCode = nil }
+            if r.diagnostics.isEmpty { editor?.clearDiagnostics() } else { editor?.setDiagnostics(r.diagnostics) }
+            if !r.ok && r.diagnostics.isEmpty {
+                diagnostics = [Diagnostic(line: 1, col: nil, severity: "error", message: "Compilation failed. Raw output: " + String(r.raw.prefix(160)))]
+                editor?.setDiagnostics(diagnostics)
+            }
+            return r.ok
+        } catch {
+            diagnostics = [Diagnostic(line: 1, col: nil, severity: "error", message: "Compiler problem: \(error.localizedDescription)")]
+            return false
+        }
+    }
+
+    func runTest(_ t: TestCase) async {
+        guard let engine = engine else { return }
+        results[t.id] = TestResult(verdict: .running)
+        do {
+            let r = try await engine.runOne(input: t.input, expected: t.expected.isEmpty ? nil : t.expected, timeLimitMs: max(current.timeLimitMs * 2, 4000))
+            let v = Verdict(rawValue: r.verdict) ?? .re
+            var res = TestResult(verdict: v, output: r.stdout ?? "", ms: r.ms ?? 0, message: r.fault?.message ?? "")
+            if v == .tle { res.message = "Time limit exceeded (phone limit)" }
+            results[t.id] = res
+            if let f = r.fault, f.kind == "ub", let line = f.line {
+                let d = Diagnostic(line: line, col: nil, severity: "error", message: f.message)
+                diagnostics = [d]
+                editor?.setDiagnostics([d])
+            }
+        } catch {
+            results[t.id] = TestResult(verdict: .re, message: error.localizedDescription)
+        }
+    }
+
+    func runAll() async {
+        runningAll = true
+        defer { runningAll = false }
+        results = [:]
+        guard await compile() else { return }
+        for t in current.tests { await runTest(t) }
+    }
+
+    func runSingle(_ t: TestCase) async {
+        guard await compile() else { return }
+        await runTest(t)
+    }
+
+    var allPassed: Bool {
+        let tests = current.tests
+        return !tests.isEmpty && tests.allSatisfy { results[$0.id]?.verdict == .ac }
+    }
+}
