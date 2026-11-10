@@ -1,15 +1,34 @@
 <div align="center">
 
-# CF Phone
+<img src="docs/icon.png" width="112" alt="CF Mobile icon">
+
+# CF Mobile
 
 **Solve Codeforces problems entirely on your iPhone.**
 Read the statement, write C++ in a real editor, test it, and submit — no laptop, no browser tabs, no paid account.
 
-[![Download IPA](https://img.shields.io/badge/Download-CFPhone.ipa-0a84ff?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Aerialsamurai/CF_phone/releases/latest/download/CFPhone.ipa)
+[![Download IPA](https://img.shields.io/badge/Download-CFMobile.ipa-0a84ff?style=for-the-badge&logo=apple&logoColor=white)](../../releases/latest/download/CFMobile.ipa)
 
 [Install guide](#install-on-your-iphone) · [Features](#what-it-does) · [FAQ](#faq)
 
 </div>
+
+<table>
+<tr>
+<td align="center"><img src="docs/screenshots/problem.png" width="190"><br><sub><b>Read the problem</b><br>math, examples, copy buttons</sub></td>
+<td align="center"><img src="docs/screenshots/code.png" width="190"><br><sub><b>Write C++</b><br>one-line errors, red line mark</sub></td>
+<td align="center"><img src="docs/screenshots/tests.png" width="190"><br><sub><b>Test each case</b><br>samples split per case</sub></td>
+<td align="center"><img src="docs/screenshots/detail.png" width="190"><br><sub><b>See what failed</b><br>exact test, no browser</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/problemset.png" width="190"><br><sub><b>Browse problems</b><br>rating, tags, solved</sub></td>
+<td align="center"><img src="docs/screenshots/contests.png" width="190"><br><sub><b>Contests</b><br>register, reminders</sub></td>
+<td align="center"><img src="docs/screenshots/subs.png" width="190"><br><sub><b>Live verdicts</b><br>updates while judging</sub></td>
+<td align="center"><img src="docs/screenshots/settings.png" width="190"><br><sub><b>Make it yours</b><br>themes, typing aids, template</sub></td>
+</tr>
+</table>
+
+<sub>Screenshots are illustrative renderings with demo data (demo user <code>john_pork</code>, made-up problems), not a real account.</sub>
 
 ---
 
@@ -38,7 +57,7 @@ The app isn't on the App Store. You install the `.ipa` file yourself using a fre
 
 ### 1. Download the app
 
-**[⬇️ Download CFPhone.ipa](https://github.com/Aerialsamurai/CF_phone/releases/latest/download/CFPhone.ipa)** (about 27 MB)
+**[⬇️ Download CFMobile.ipa](../../releases/latest/download/CFMobile.ipa)** (about 27 MB)
 
 It's rebuilt automatically from the source in this repository; the release page shows which commit it came from.
 
@@ -49,10 +68,10 @@ Works on **Windows and Mac**.
 1. Install **iTunes** from [apple.com](https://www.apple.com/itunes/) (Windows only — *not* the Microsoft Store version).
 2. Download and install **[Sideloadly](https://sideloadly.io)**.
 3. Plug in your iPhone, unlock it and tap **Trust**.
-4. Open Sideloadly, drag **CFPhone.ipa** onto it, enter your **Apple ID**, press **Start**, and enter your password / 2FA code when asked.
+4. Open Sideloadly, drag **CFMobile.ipa** onto it, enter your **Apple ID**, press **Start**, and enter your password / 2FA code when asked.
 5. On the iPhone: **Settings → General → VPN & Device Management** → tap your Apple ID → **Trust**.
 6. **Settings → Privacy & Security → Developer Mode** → turn on (the phone restarts).
-7. Open **CF Phone**.
+7. Open **CF Mobile**.
 
 ### Keeping it working (free Apple ID)
 
@@ -75,7 +94,7 @@ To avoid doing this by hand, use **[AltStore](https://altstore.io)** instead of 
 5. In the **Tests** tab press **Submit**.
 6. Watch the verdict in **Submissions**.
 
-**Template:** *Settings → Template*. Import a file, or edit `template.cpp` in the Files app under *On My iPhone → CF Phone*.
+**Template:** *Settings → Template*. Import a file, or edit `template.cpp` in the Files app under *On My iPhone → CF Mobile*.
 
 **Typing tip:** turn off Smart Punctuation, Auto-Correction and Predictive Text in *iOS Settings → General → Keyboard*, and hold the space bar to move the cursor like a trackpad.
 
@@ -96,7 +115,7 @@ Almost always, but not identically. The phone compiler is 32-bit WebAssembly, so
 - The overflow/index checks are a debugging aid that you can turn off in Settings.
 
 **Submit or Register stopped working.**
-They drive the real codeforces.com site, so a layout change can break the auto-fill. The page stays visible so you can finish by hand. Please [open an issue](https://github.com/Aerialsamurai/CF_phone/issues).
+They drive the real codeforces.com site, so a layout change can break the auto-fill. The page stays visible so you can finish by hand. Please [open an issue](../../issues).
 
 **Is it safe? Does it collect anything?**
 No analytics, no accounts, no servers of mine. Your code, problems and settings stay on your phone. Codeforces data is fetched directly from codeforces.com.

@@ -1,0 +1,181 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<meta name="viewport" content="width=390, initial-scale=1">
+<title>CF Mobile mock screens (demo data)</title>
+<style>
+:root { --bg:#000; --card:#1c1c1e; --sep:#38383a; --fg:#fff; --dim:#8e8e93; --dim2:#636366; --blue:#0a84ff; --green:#30d158; --red:#ff453a; --orange:#ff9f0a; }
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+html, body { width: 390px; height: 844px; background: #000; overflow: hidden;
+  font: 17px/1.3 -apple-system, "SF Pro Text", "Inter", "Helvetica Neue", system-ui, sans-serif; color: var(--fg); }
+.phone { position: relative; width: 390px; height: 844px; display: flex; flex-direction: column; background: var(--bg); }
+.status { height: 50px; padding: 18px 28px 0 34px; display: flex; justify-content: space-between; align-items: center; font-weight: 600; font-size: 16px; flex: none; }
+.status .r { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.bars { display: flex; gap: 2px; align-items: flex-end; height: 12px; } .bars i { width: 3px; background: #fff; border-radius: 1px; }
+.batt { width: 26px; height: 13px; border: 1.5px solid #8e8e93; border-radius: 4px; padding: 1.5px; position: relative; }
+.batt b { display: block; height: 100%; width: 70%; background: #fff; border-radius: 2px; }
+.nav { height: 44px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; color: var(--blue); }
+.nav .t { color: var(--fg); font-weight: 600; }
+.nav .grp { display: flex; gap: 20px; align-items: center; min-width: 60px; }
+.nav .grp.r { justify-content: flex-end; }
+.seg { display: flex; background: #1c1c1e; border-radius: 9px; padding: 2px; width: 180px; }
+.seg span { flex: 1; text-align: center; font-size: 13px; padding: 5px 0; border-radius: 7px; color: var(--fg); }
+.seg span.on { background: #636366; font-weight: 600; }
+.content { flex: 1; position: relative; overflow: hidden; }
+.tabbar { height: 83px; flex: none; background: rgba(28,28,30,.95); border-top: 1px solid #2c2c2e; display: flex; padding: 8px 4px 0; }
+.tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 10px; color: var(--dim); }
+.tab.on { color: var(--blue); } .tab svg { width: 26px; height: 26px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.large { font-size: 34px; font-weight: 700; padding: 6px 20px 8px; letter-spacing: -.02em; }
+.scroll { padding: 0 16px; }
+.sect { font-size: 13px; color: var(--dim); text-transform: uppercase; padding: 14px 16px 6px; letter-spacing: .02em; display: flex; justify-content: space-between; }
+.card { background: var(--card); border-radius: 12px; overflow: hidden; }
+.row { padding: 12px 16px; border-bottom: 1px solid var(--sep); } .row:last-child { border-bottom: 0; }
+.dim { color: var(--dim); } .sm { font-size: 13px; } .xs { font-size: 12px; }
+.pill { display: inline-block; padding: 2px 9px; border-radius: 99px; background: #2c2c2e; font-size: 12px; }
+.mono { font: 13px/1.45 ui-monospace, Menlo, "DejaVu Sans Mono", monospace; }
+.block { background: #2c2c2e; border-radius: 8px; padding: 8px 10px; margin-top: 3px; white-space: pre; }
+.lbl { font-size: 12px; color: var(--dim); margin-top: 8px; }
+.ico { width: 22px; height: 22px; flex: none; } .ico.f { fill: currentColor; stroke: none; }
+.btn { background: var(--blue); color: #fff; border-radius: 99px; font-size: 14px; padding: 6px 14px; font-weight: 600; }
+.sheet { background: #1c1c1e; border-radius: 12px 12px 0 0; margin-top: 10px; height: 100%; }
+.grab { width: 36px; height: 5px; background: #48484a; border-radius: 3px; margin: 6px auto; }
+.lg { background: var(--card); border-radius: 12px; padding: 12px; }
+</style></head>
+<body><div class="phone" id="app"></div>
+<script>
+const $ = (s) => document.querySelector(s);
+const q = new URLSearchParams(location.search);
+const screen = q.get('s') || 'tests';
+
+const I = {
+  code: '<svg viewBox="0 0 24 24"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></svg>',
+  tests: '<svg viewBox="0 0 24 24"><circle cx="5" cy="7" r="2.3"/><circle cx="5" cy="17" r="2.3"/><path d="M11 7h10M11 17h10M4 7l1 1 2-2"/></svg>',
+  subs: '<svg viewBox="0 0 24 24"><path d="M21 3L3 10.5l7 2.5 2.5 7z"/><path d="M10 13L21 3"/></svg>',
+  cont: '<svg viewBox="0 0 24 24"><path d="M7 4h10v5a5 5 0 01-10 0zM7 6H4v1a3 3 0 003 3M17 6h3v1a3 3 0 01-3 3M12 14v4M8 21h8M10 18h4"/></svg>',
+  gear: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>',
+  list: '<svg class="ico" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round"><path d="M9 6h12M9 12h12M9 18h12M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>',
+  hammer: '<svg class="ico" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M14 4l6 6-3 3-6-6zM12 9L3 18l3 3 9-9"/></svg>',
+  play: '<svg class="ico" viewBox="0 0 24 24" style="fill:currentColor"><path d="M7 4l13 8-13 8z"/></svg>',
+  plus: '<svg class="ico" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round"><path d="M12 5v14M5 12h14"/></svg>',
+  filter: '<svg class="ico" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round"><circle cx="12" cy="12" r="9"/><path d="M7 9h10M9 12.5h6M11 16h2"/></svg>',
+  ok: '<svg class="ico f" viewBox="0 0 24 24" style="color:var(--green)"><circle cx="12" cy="12" r="11"/><path d="M7 12.5l3.5 3.5L17 9" stroke="#000" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  bad: '<svg class="ico f" viewBox="0 0 24 24" style="color:var(--red)"><circle cx="12" cy="12" r="11"/><path d="M8 8l8 8M16 8l-8 8" stroke="#000" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>',
+  idle: '<svg class="ico" viewBox="0 0 24 24" style="fill:none;stroke:#636366;stroke-width:2"><circle cx="12" cy="12" r="10"/></svg>',
+  half: '<svg class="ico" viewBox="0 0 24 24" style="color:var(--orange)"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2a10 10 0 000 20z" fill="currentColor"/></svg>',
+  runc: '<svg class="ico" viewBox="0 0 24 24" style="fill:none;stroke:var(--blue);stroke-width:2"><circle cx="12" cy="12" r="10"/><path d="M10 8l6 4-6 4z" fill="var(--blue)"/></svg>',
+  bell: '<svg class="ico" viewBox="0 0 24 24" style="fill:var(--blue)"><path d="M12 3a6 6 0 00-6 6v4l-2 3h16l-2-3V9a6 6 0 00-6-6zM10 19a2 2 0 004 0z"/></svg>',
+};
+
+const tabs = ['Code', 'Tests', 'Submissions', 'Contests', 'Settings'];
+const tabIcons = [I.code, I.tests, I.subs, I.cont, I.gear];
+const tabOf = { problem: 0, code: 0, tests: 1, detail: 2, problemset: 0, subs: 2, contests: 3, settings: 4 };
+
+function chrome(inner, nav) {
+  const on = tabOf[screen];
+  return `
+  <div class="status"><span>9:41</span><span class="r"><span class="bars"><i style="height:4px"></i><i style="height:6px"></i><i style="height:9px"></i><i style="height:12px"></i></span> 5G <span class="batt"><b></b></span></span></div>
+  ${nav || ''}
+  <div class="content" id="content">${inner}</div>
+  <div class="tabbar">${tabs.map((t, i) => `<div class="tab ${i === on ? 'on' : ''}">${tabIcons[i]}<span>${t}</span></div>`).join('')}</div>`;
+}
+
+const codeNav = (seg) => `<div class="nav"><div class="grp">${I.list}</div>
+  <div class="seg"><span class="${seg === 0 ? 'on' : ''}">Problem</span><span class="${seg === 1 ? 'on' : ''}">Code</span></div>
+  <div class="grp r">${I.hammer}${I.play}</div></div>`;
+
+const rate = (r) => r < 1200 ? '#8e8e93' : r < 1400 ? '#30d158' : r < 1600 ? '#64d2ff' : r < 1900 ? '#0a84ff' : r < 2100 ? '#bf5af2' : r < 2400 ? '#ff9f0a' : '#ff453a';
+
+const R = {
+  problem: () => chrome(`<iframe id="f" src="reader.html" style="position:absolute;inset:0;width:100%;height:100%;border:0"></iframe>`, codeNav(0)),
+  code: () => chrome(`<iframe id="f" src="index.html" style="position:absolute;inset:0;width:100%;height:100%;border:0"></iframe>`, codeNav(1)),
+
+  tests: () => chrome(`
+    <div class="large" style="padding-top:0">Tests</div>
+    <div class="sect"><span>1234B · Pair Sums</span><span class="xs" style="text-transform:none">compiled in 1,412 ms</span></div>
+    <div class="scroll"><div class="card">
+      <div class="row"><div style="display:flex;align-items:center;gap:10px">${I.ok}<b style="flex:1;font-size:17px">Sample 1 · case 1</b><span class="dim sm">6 ms</span>${I.runc}</div></div>
+      <div class="row"><div style="display:flex;align-items:center;gap:10px">${I.bad}<b style="flex:1">Sample 1 · case 2</b><span class="dim sm">5 ms</span>${I.runc}</div>
+        <div class="lbl">Input</div><div class="block mono">1\n3 1\n2 2 7</div>
+        <div class="lbl">Expected</div><div class="block mono">14</div>
+        <div class="lbl">Your output</div><div class="block mono">4</div></div>
+      <div class="row"><div style="display:flex;align-items:center;gap:10px">${I.idle}<b style="flex:1">Sample 1 · all cases together</b>${I.runc}</div></div>
+    </div></div>`,
+    `<div class="nav"><div class="grp">${I.plus}</div><div class="grp r">${I.play}<span style="font-size:17px">Submit</span></div></div>`),
+
+  detail: () => chrome(`<div class="sheet"><div class="grab"></div>
+    <div class="nav" style="padding:0 16px"><span>Close</span><span class="t">Submission</span><span style="width:40px"></span></div>
+    <div style="padding:6px 16px 0">
+      <div style="font-size:20px;font-weight:700">1234B · Pair Sums</div>
+      <div style="color:var(--red);font-weight:600;margin-top:4px">Wrong answer on test 2</div>
+      <div class="dim sm" style="margin-top:3px">GNU C++23 (64) · 46 ms · 0 KB</div>
+      <div style="background:rgba(255,69,58,.14);border-radius:10px;padding:12px;margin-top:14px">
+        <div style="font-weight:600">Test 2 · your 3rd number was 2, expected 1</div>
+        <div class="dim sm" style="margin-top:4px">That's on line 3 of your output.</div></div>
+      <div class="lbl">Test input</div><div class="block mono">3\n4 2\n3 5 1 9\n3 1\n2 2 7\n2 1\n1 1</div>
+      <div class="lbl">Expected (jury)</div><div class="block mono">48\n14\n1</div>
+      <div class="lbl">Your output</div><div class="block mono">48\n14\n2</div>
+      <div style="margin-top:14px;border:1px solid #3a3a3c;border-radius:9px;padding:9px 14px;display:inline-flex;gap:8px;color:var(--blue);font-size:15px">⊕ Add this test to my Tests tab</div>
+    </div></div>`),
+
+  problemset: () => {
+    const rows = [
+      ['1234A', 'Pair Sums', 1200, 'implementation · math', 52341, 'ok'],
+      ['1233D', 'Lantern Walk', 1500, 'greedy · sortings', 18022, 'half'],
+      ['1233C', 'Cake Slices', 1700, 'binary search · two pointers', 9410, 'idle'],
+      ['1230E', 'Quiet Library', 1900, 'dp · bitmasks', 3876, 'idle'],
+      ['1229B', 'Sorted Towers', 800, 'constructive algorithms', 91233, 'ok'],
+      ['1228F', 'Tree Paint', 2100, 'dfs and similar · trees', 1544, 'idle'],
+      ['1226C', 'Mod Games', 1300, 'number theory · math', 24581, 'idle'],
+    ];
+    return chrome(`
+      <div style="padding:0 16px 8px"><div style="background:#1c1c1e;border-radius:10px;padding:8px 12px;color:#8e8e93;font-size:16px">🔍&nbsp; Name or id (e.g. 1900A)</div></div>
+      <div class="sect" style="padding-top:4px">1,284 problems</div>
+      <div style="padding:0 0">${rows.map(r => `<div style="display:flex;gap:10px;padding:10px 16px;border-bottom:1px solid #2c2c2e">
+        <div style="padding-top:2px">${I[r[5]]}</div>
+        <div style="flex:1"><div style="display:flex;justify-content:space-between"><b>${r[0]} · ${r[1]}</b><b style="color:${rate(r[2])}">${r[2]}</b></div>
+        <div class="dim xs" style="margin-top:3px">${r[3]}</div><div style="color:#636366;font-size:11px;margin-top:2px">${r[4].toLocaleString('en-US')} solved</div></div></div>`).join('')}</div>`,
+      `<div class="nav"><div class="grp"></div><span class="t">Problemset</span><div class="grp r">${I.filter}</div></div>`);
+  },
+
+  contests: () => chrome(`
+    <div class="large" style="padding-top:0">Contests</div>
+    <div class="sect">Live now</div>
+    <div class="scroll"><div class="card"><div class="row">
+      <div style="display:flex;align-items:center;gap:6px;color:var(--red);font-size:12px;font-weight:700"><span style="width:8px;height:8px;border-radius:50%;background:var(--red)"></span>LIVE</div>
+      <b style="display:block;margin-top:3px">Educational Round 190 (Rated for Div. 2)</b><span class="dim xs">Ends in 01:23:45</span></div></div></div>
+    <div class="sect">Upcoming</div>
+    <div class="scroll"><div class="card">
+      ${[['Codeforces Round 1234 (Div. 2)', 'Nov 15, 2026 at 8:05 PM · 2h 0m', '4 days, 21 hr'], ['Codeforces Round 1235 (Div. 1)', 'Nov 21, 2026 at 8:05 PM · 2h 0m', '10 days, 21 hr'], ['Codeforces Round 1236 (Div. 4)', 'Nov 24, 2026 at 8:05 PM · 2h 15m', '13 days, 21 hr']].map(c => `<div class="row">
+        <b>${c[0]}</b><div class="dim" style="font-size:14px;margin-top:3px">${c[1]}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px"><span class="xs dim">Starts in <b style="color:#fff">${c[2]}</b></span><span style="display:flex;gap:14px;align-items:center">${I.bell}<span class="btn">Register</span></span></div></div>`).join('')}
+    </div></div>`),
+
+  subs: () => chrome(`
+    <div class="large" style="padding-top:0">Submissions</div>
+    <div class="scroll"><div class="card">
+      ${[['1234B · Pair Sums', 'Running · test 4', '#0a84ff', '', 'just now'], ['1234B · Pair Sums', 'Wrong answer on test 2', '#ff453a', '46 ms   0 KB', '3 min'], ['1234A · Pair Sums', 'Accepted', '#30d158', '78 ms   4,500 KB', '1 hr'], ['1229B · Sorted Towers', 'Accepted', '#30d158', '31 ms   1,600 KB', '1 day'], ['1226C · Mod Games', 'Time limit on test 7', '#ff9f0a', '2000 ms   9,100 KB', '2 days'], ['1225A · Seat Plan', 'Runtime error on test 3', '#ff453a', '15 ms   0 KB', '2 days']].map(s => `<div class="row" style="display:flex;gap:12px">
+        <span style="width:10px;height:10px;border-radius:50%;background:${s[2]};margin-top:7px;flex:none"></span>
+        <div><b>${s[0]}</b><div style="color:${s[2]};font-weight:600;font-size:15px;margin-top:2px">${s[1]}</div><div class="dim xs" style="margin-top:2px">${s[3]} &nbsp; ${s[4]}</div></div></div>`).join('')}
+    </div></div>`),
+
+  settings: () => chrome(`
+    <div class="large" style="padding-top:0">Settings</div>
+    <div class="sect">Codeforces</div>
+    <div class="scroll"><div class="card">
+      <div class="row" style="display:flex;justify-content:space-between"><span>Handle</span><span class="dim">john_pork</span></div>
+      <div class="row" style="color:var(--blue)">Log in to Codeforces</div></div></div>
+    <div class="sect">Editor</div>
+    <div class="scroll"><div class="card">
+      <div class="row" style="display:flex;justify-content:space-between"><span>Theme</span><span class="dim">Dark Modern ⌃</span></div>
+      <div class="row" style="display:flex;justify-content:space-between"><span>Code font size: 14</span><span class="dim">− | +</span></div>
+      <div class="row" style="display:flex;justify-content:space-between"><span>Problem text size: 17</span><span class="dim">− | +</span></div></div></div>
+    <div class="sect">Typing on a phone</div>
+    <div class="scroll"><div class="card">
+      <div class="row" style="display:flex;justify-content:space-between"><span>Indent</span><span class="dim">4 spaces ⌃</span></div>
+      <div class="row" style="display:flex;justify-content:space-between"><span>Auto-close brackets &amp; quotes</span><span style="width:46px;height:28px;border-radius:14px;background:var(--green);position:relative"><i style="position:absolute;right:2px;top:2px;width:24px;height:24px;border-radius:50%;background:#fff"></i></span></div>
+      <div class="row" style="display:flex;justify-content:space-between"><span>Snippet chips</span><span style="width:46px;height:28px;border-radius:14px;background:var(--green);position:relative"><i style="position:absolute;right:2px;top:2px;width:24px;height:24px;border-radius:50%;background:#fff"></i></span></div></div></div>
+    <div class="sect">Compiler</div>
+    <div class="scroll"><div class="card"><div class="row" style="display:flex;justify-content:space-between"><span>C++ standard</span><span class="dim">C++23 ⌃</span></div></div></div>`),
+};
+
+$('#app').innerHTML = R[screen]();
+</script></body></html>
