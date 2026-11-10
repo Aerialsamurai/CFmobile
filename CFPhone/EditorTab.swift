@@ -6,16 +6,31 @@ struct EditorTab: View {
 
     var body: some View {
         NavigationStack {
-            Group {
+            ZStack {
+                if let rd = app.reader {
+                    ReaderWebView(host: rd)
+                        .opacity(app.codeSegment == 0 ? 1 : 0)
+                        .allowsHitTesting(app.codeSegment == 0)
+                }
                 if let ed = app.editor {
-                    EditorWebView(host: ed).ignoresSafeArea(.keyboard)
+                    EditorWebView(host: ed)
+                        .ignoresSafeArea(.keyboard)
+                        .opacity(app.codeSegment == 1 ? 1 : 0)
+                        .allowsHitTesting(app.codeSegment == 1)
                 }
             }
-            .navigationTitle(app.current.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button { showProblems = true } label: { Image(systemName: "list.bullet") }
+                }
+                ToolbarItem(placement: .principal) {
+                    Picker("View", selection: $app.codeSegment) {
+                        Text("Problem").tag(0)
+                        Text("Code").tag(1)
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 180)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     if app.compiling {
@@ -32,6 +47,9 @@ struct EditorTab: View {
                         Task { await app.runAll() }
                     } label: { Image(systemName: "play.fill") }
                 }
+            }
+            .onChange(of: app.codeSegment) { seg in
+                if seg == 0 { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
             }
             .sheet(isPresented: $showProblems) { ProblemsSheet() }
         }
@@ -50,6 +68,13 @@ struct ProblemsSheet: View {
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    NavigationLink {
+                        ProblemsetView(onPicked: { dismiss() })
+                    } label: {
+                        Label("Browse problemset", systemImage: "square.grid.2x2")
+                    }
+                }
                 Section("Import from Codeforces") {
                     TextField("Paste problem URL", text: $urlText)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()

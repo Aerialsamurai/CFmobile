@@ -22,6 +22,7 @@ self.onmessage = async (e) => {
     const { runClang } = await loadClang();
     self.postMessage({ id, type: 'status', text: 'Compiling…' });
     let stderr = '';
+    let internal = false;
     const dec = new TextDecoder();
     const t0 = performance.now();
     let files;
@@ -33,11 +34,12 @@ self.onmessage = async (e) => {
       );
     } catch (err) {
       files = null; // non-zero exit: diagnostics are in stderr
+      if (!stderr.trim()) { stderr = 'INTERNAL: ' + String((err && err.message) || err); internal = true; }
     }
     const ms = Math.round(performance.now() - t0);
     const wasm = files && files['main.wasm'];
     if (wasm) self.postMessage({ id, type: 'done', ok: true, stderr, ms, wasm }, [wasm.buffer]);
-    else self.postMessage({ id, type: 'done', ok: false, stderr, ms });
+    else self.postMessage({ id, type: 'done', ok: false, stderr, ms, internal });
   } catch (err) {
     self.postMessage({ id, type: 'error', message: String(err && err.stack || err) });
   }

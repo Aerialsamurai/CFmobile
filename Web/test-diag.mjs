@@ -8,3 +8,6 @@ main.cpp:9:7: error: no viable overloaded '>>'
 main.cpp:9:7: error: use of undeclared identifier 'cnt'; did you mean 'count'?`;
 console.log(parseDiagnostics(s));
 console.log(parseRuntimeFault({stderr:'\x01UB|4|9|mul\n'}), parseRuntimeFault({timedOut:true}), parseRuntimeFault({crashed:'unreachable',stderr:''}));
+const w = parseDiagnostics(`main.cpp:10:5: warning: implicit conversion loses integer precision: 'long long' to 'size_type' (aka 'unsigned long') [-Wshorten-64-to-32]
+main.cpp:11:5: warning: implicit conversion loses integer precision: 'long long' to 'int' [-Wshorten-64-to-32]`);
+console.log('filtered:', w.map(x=>x.line+':'+x.message));

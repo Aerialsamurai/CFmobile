@@ -22,7 +22,12 @@ function sameOutput(got, want, eps) {
 window.cfEngine = {
   async compile(code, opts = {}) {
     lastWasm = null;
-    const r = await engine.compile(code, { std: opts.std || 'c++23', checks: opts.checks !== false });
+    let r = await engine.compile(code, { std: opts.std || 'c++23', checks: opts.checks !== false });
+    // The compiler can fail to start on the very first call (cold load); one retry fixes it.
+    if (!r.ok && r.internal) {
+      engine.compiler?.terminate(); engine.compiler = null;
+      r = await engine.compile(code, { std: opts.std || 'c++23', checks: opts.checks !== false });
+    }
     const diagnostics = parseDiagnostics(r.stderr || '');
     if (r.ok) lastWasm = r.wasm;
     return { ok: !!r.ok, ms: r.ms, diagnostics, raw: r.stderr || '' };

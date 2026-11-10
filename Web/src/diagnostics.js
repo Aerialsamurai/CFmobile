@@ -59,6 +59,8 @@ export function parseDiagnostics(stderr) {
     if (f) { flag = f[1]; raw = raw.slice(0, f.index); }
     if (severity === 'warning' && !KEEP_WARNINGS.test(flag + ' ' + raw)) continue;
     if (/too many errors emitted/.test(raw)) continue;
+    // wasm32 has a 32-bit size_t; Codeforces is 64-bit, so these warnings are false alarms here.
+    if (/loses integer precision: '.+?' to '(?:std::)?(?:size_t|size_type|__size_type|unsigned long|difference_type|ptrdiff_t|long)'/.test(raw)) continue;
     let message = raw;
     for (const [rx, fn] of RULES) { const mm = raw.match(rx); if (mm) { message = fn(mm); break; } }
     const key = line + '|' + message;

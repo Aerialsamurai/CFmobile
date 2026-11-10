@@ -7,6 +7,7 @@ struct SubmissionsTab: View {
     @State private var error = ""
     @State private var loading = false
     @State private var polling: Task<Void, Never>?
+    @State private var picked: CFSubmission?
 
     var body: some View {
         NavigationStack {
@@ -15,11 +16,14 @@ struct SubmissionsTab: View {
                     Text("Set your Codeforces handle in Settings to see your submissions.").foregroundStyle(.secondary)
                 }
                 if !error.isEmpty { Text(error).font(.footnote).foregroundStyle(.red) }
-                ForEach(items) { s in SubmissionRow(s: s) }
+                ForEach(items) { s in
+                    Button { picked = s } label: { SubmissionRow(s: s) }.buttonStyle(.plain)
+                }
             }
             .navigationTitle("Submissions")
             .refreshable { await load() }
             .overlay { if loading && items.isEmpty { ProgressView() } }
+            .sheet(item: $picked) { SubmissionDetailSheet(sub: $0) }
         }
         .onAppear { startPolling() }
         .onDisappear { polling?.cancel() }

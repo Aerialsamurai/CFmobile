@@ -15,6 +15,9 @@ struct TestCase: Codable, Identifiable, Hashable {
     var input: String
     var expected: String
     var isSample: Bool
+    var label: String? = nil        // e.g. "Sample 1 · case 2"
+    var isCombined: Bool? = nil     // the original multi-case sample, kept for a final check
+    var group: Int? = nil           // which sample (1-based) this came from
 }
 
 struct Problem: Codable, Identifiable, Hashable {
@@ -26,6 +29,11 @@ struct Problem: Codable, Identifiable, Hashable {
     var contestId: Int?
     var index: String?
     var updated: Date
+    var statementHTML: String? = nil
+    var memoryLimit: String? = nil
+    var ioMode: String? = nil
+    var tags: [String]? = nil
+    var rating: Int? = nil
 }
 
 enum Verdict: String {
@@ -64,8 +72,25 @@ struct ImportedProblem: Codable {
     var reason: String?
     var title: String?
     var timeLimitMs: Int?
+    var timeLimit: String?
+    var memoryLimit: String?
+    var input: String?
+    var output: String?
     var inputs: [String]?
     var outputs: [String]?
+    var statement: String?
+}
+
+/// What Codeforces tells us about a failed test of one of your submissions.
+struct SubmissionDetail: Codable {
+    var ok: Bool
+    var reason: String?
+    var testCount: Int?
+    var verdict: String?
+    var input: String?
+    var output: String?
+    var answer: String?
+    var checker: String?
 }
 
 // MARK: - Codeforces API models
@@ -81,6 +106,29 @@ struct CFProblem: Codable, Hashable {
     let index: String
     let name: String
     let rating: Int?
+    let tags: [String]?
+}
+
+struct CFProblemStat: Codable {
+    let contestId: Int?
+    let index: String
+    let solvedCount: Int
+}
+
+struct CFProblemset: Decodable {
+    let problems: [CFProblem]
+    let problemStatistics: [CFProblemStat]
+}
+
+/// One row of the problemset browser.
+struct PSProblem: Codable, Identifiable, Hashable {
+    let contestId: Int
+    let index: String
+    let name: String
+    let rating: Int?
+    let tags: [String]
+    let solved: Int
+    var id: String { "\(contestId)\(index)" }
 }
 
 struct CFContest: Codable, Identifiable, Hashable {

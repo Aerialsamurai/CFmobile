@@ -28,7 +28,24 @@ struct SettingsTab: View {
                     Picker("Theme", selection: $settings.theme) {
                         ForEach(Settings.themes, id: \.name) { Text($0.name).tag($0.name) }
                     }
-                    Stepper("Font size: \(Int(settings.fontSize))", value: $settings.fontSize, in: 10...24)
+                    Stepper("Code font size: \(Int(settings.fontSize))", value: $settings.fontSize, in: 10...24)
+                    Stepper("Problem text size: \(Int(settings.readerFontSize))", value: $settings.readerFontSize, in: 13...26)
+                }
+
+                Section {
+                    Picker("Indent", selection: $settings.indentSize) {
+                        Text("2 spaces").tag(2)
+                        Text("4 spaces").tag(4)
+                    }
+                    Toggle("Auto-close brackets & quotes", isOn: $settings.autoClose)
+                    Toggle("Snippet chips (cin>>, for, vector<…)", isOn: $settings.snippetRow)
+                    Toggle("Haptic tap on key row", isOn: $settings.haptics)
+                } header: { Text("Typing on a phone") } footer: {
+                    Text("The row above the keyboard also has // (comment line), duplicate line, delete line, select line and move line up/down. Tip: hold the space bar and slide to move the cursor precisely.")
+                }
+
+                Section("Problems") {
+                    Toggle("Split multi-case samples", isOn: $settings.autoSplit)
                 }
 
                 Section("Compiler") {

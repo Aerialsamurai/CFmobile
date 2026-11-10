@@ -68,6 +68,8 @@ struct TestRow: View {
     let index: Int
     let test: TestCase
     @State private var open = false
+    @State private var splitGroup: Int?
+    @State private var splitFailed = false
 
     var result: TestResult? { app.results[test.id] }
 
@@ -75,8 +77,16 @@ struct TestRow: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 badge
-                Text(test.isSample ? "Sample \(index)" : "Custom \(index)").font(.headline)
+                Text(test.label ?? (test.isSample ? "Sample \(test.group ?? index)" : "Custom \(index)")).font(.headline).lineLimit(1)
                 Spacer()
+                if let g = test.group, test.isSample {
+                    Menu {
+                        Button("Auto-split into cases") { if !app.resplit(group: g, sizes: nil) { splitFailed = true } }
+                        Button("Split by lines…") { splitGroup = g }
+                        Button("Merge back into one", role: .destructive) { app.unsplit(group: g) }
+                    } label: { Image(systemName: "ellipsis.circle").font(.title3) }
+                        .buttonStyle(.borderless)
+                }
                 if let r = result, r.ms > 0 { Text("\(r.ms) ms").font(.caption).foregroundStyle(.secondary) }
                 Button { Task { await app.runSingle(test) } } label: { Image(systemName: "play.circle").font(.title3) }
                     .buttonStyle(.borderless)
@@ -93,6 +103,10 @@ struct TestRow: View {
         .contentShape(Rectangle())
         .onTapGesture { withAnimation { open.toggle() } }
         .padding(.vertical, 2)
+        .sheet(item: Binding(get: { splitGroup.map { GroupID(id: $0) } }, set: { splitGroup = $0?.id })) { g in SplitSheet(group: g.id) }
+        .alert("Couldn't split this sample", isPresented: $splitFailed) {
+            Button("OK", role: .cancel) {}
+        } message: { Text("It doesn't look like a multi-case input, or the lines don't divide evenly. Try \"Split by lines…\".") }
     }
 
     @ViewBuilder var badge: some View {
@@ -143,5 +157,42 @@ struct AddTestSheet: View {
                 }
             }
         }
+    }
+}
+
+struct GroupID: Identifiable { let id: Int }
+
+/// Manual fallback: say how many lines each case uses ("2", or "2,3,2" for uneven cases).
+struct SplitSheet: View {
+    @EnvironmentObject var app: AppState
+    @Environment(\.dismiss) private var dismiss
+    let group: Int
+    @State private var text = ""
+    @State private var error = ""
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("e.g. 2   or   2,3,2", text: $text).keyboardType(.numbersAndPunctuation)
+                } header: { Text("Lines per test case") } footer: {
+                    Text("Count the lines after the first line (the number of cases). One number applies to every case; a list gives each case its own size.")
+                }
+                if !error.isEmpty { Text(error).foregroundStyle(.red).font(.footnote) }
+            }
+            .navigationTitle("Split sample")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Split") {
+                        let sizes = text.split(whereSeparator: { $0 == "," || $0 == " " }).compactMap { Int($0) }
+                        if !sizes.isEmpty, app.resplit(group: group, sizes: sizes) { dismiss() }
+                        else { error = "Those sizes don't add up to the lines in this sample." }
+                    }.disabled(text.isEmpty)
+                }
+            }
+        }
+        .presentationDetents([.medium])
     }
 }

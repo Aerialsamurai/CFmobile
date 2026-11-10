@@ -40,26 +40,14 @@ struct FlowWebView: UIViewRepresentable {
 // MARK: - JavaScript used on codeforces.com pages
 
 enum CFScripts {
-    /// Reads title, time limit and sample tests from a problem page. Returns a JSON string.
-    static let extractProblem = """
-    var ps = document.querySelector('.problem-statement');
-    if (!ps) { return JSON.stringify({ok:false, reason: document.title || 'no problem found'}); }
-    function pre(el) {
-      var lines = el.querySelectorAll('.test-example-line');
-      if (lines.length) { return Array.from(lines).map(function(l){return l.textContent;}).join('\\n') + '\\n'; }
-      var clone = el.cloneNode(true);
-      clone.querySelectorAll('br').forEach(function(b){ b.replaceWith('\\n'); });
-      var t = clone.textContent.replace(/^\\n+/, '');
-      return t.endsWith('\\n') ? t : t + '\\n';
+    /// JavaScript lives in Scripts/*.js (bundled) so it can be tested outside the app.
+    static func load(_ name: String) -> String {
+        guard let u = Bundle.main.url(forResource: name, withExtension: "js"),
+              let t = try? String(contentsOf: u, encoding: .utf8) else { return "return JSON.stringify({ok:false, reason:'missing script \(name)'});" }
+        return t
     }
-    var title = ((ps.querySelector('.header .title')||{}).textContent || 'Problem').replace(/^[A-Z0-9]+\\.\\s*/, '').trim();
-    var tlText = ((ps.querySelector('.time-limit')||{}).textContent || '');
-    var m = tlText.match(/([0-9.]+)\\s*second/);
-    var tl = m ? Math.round(parseFloat(m[1]) * 1000) : 2000;
-    var ins = Array.from(ps.querySelectorAll('.sample-test .input pre')).map(pre);
-    var outs = Array.from(ps.querySelectorAll('.sample-test .output pre')).map(pre);
-    return JSON.stringify({ok:true, title:title, timeLimitMs:tl, inputs:ins, outputs:outs});
-    """
+    static var extractProblem: String { load("extractProblem") }
+    static var submissionDetail: String { load("submissionDetail") }
 
     /// Fills the submit form. Arguments: code, index, autoSubmit. Returns a status string.
     static let fillSubmit = """
@@ -124,6 +112,8 @@ struct ImportProblemSheet: View {
     @Environment(\.dismiss) private var dismiss
     let contestId: Int
     let index: String
+    var tags: [String]? = nil
+    var rating: Int? = nil
     @StateObject private var flow = WebFlow()
     @State private var status = "Loading problem…"
     @State private var done = false
@@ -145,7 +135,7 @@ struct ImportProblemSheet: View {
                           let ip = try? JSONDecoder().decode(ImportedProblem.self, from: d) else { return }
                     if ip.ok {
                         done = true
-                        app.addImported(ip, contestId: contestId, index: index, url: url.absoluteString)
+                        app.addImported(ip, contestId: contestId, index: index, url: url.absoluteString, tags: tags, rating: rating)
                         dismiss()
                     } else {
                         status = "Waiting for the problem page… (if you see a check, complete it)"

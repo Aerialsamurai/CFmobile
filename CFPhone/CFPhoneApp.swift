@@ -53,5 +53,10 @@ struct RootView: View {
         }
         .onChange(of: settings.theme) { _ in app.applyAppearance() }
         .onChange(of: settings.fontSize) { _ in app.applyAppearance() }
+        .onChange(of: settings.readerFontSize) { _ in app.applyAppearance() }
+        .onChange(of: settings.indentSize) { _ in app.applyAppearance() }
+        .onChange(of: settings.autoClose) { _ in app.applyAppearance() }
+        .onChange(of: settings.snippetRow) { _ in app.applyAppearance() }
+        .onChange(of: settings.haptics) { _ in app.applyAppearance() }
     }
 }

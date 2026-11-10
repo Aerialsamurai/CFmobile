@@ -1,8 +1,8 @@
-import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter, drawSelection, Decoration, WidgetType, gutter, GutterMarker } from '@codemirror/view';
-import { EditorState, StateField, StateEffect, RangeSetBuilder } from '@codemirror/state';
+import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter, Decoration, WidgetType, gutter, GutterMarker } from '@codemirror/view';
+import { EditorState, StateField, StateEffect, RangeSetBuilder, Compartment } from '@codemirror/state';
 import { cpp } from '@codemirror/lang-cpp';
 import { syntaxHighlighting, HighlightStyle, indentOnInput, bracketMatching, indentUnit } from '@codemirror/language';
-import { history, historyKeymap, defaultKeymap, undo, redo } from '@codemirror/commands';
+import { history, historyKeymap, defaultKeymap, undo, redo, toggleComment, copyLineDown, deleteLine, moveLineUp, moveLineDown, selectLine } from '@codemirror/commands';
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { tags as t } from '@lezer/highlight';
 import { applyTheme, DEFAULT_THEME, THEMES } from './themes.js';
@@ -79,8 +79,6 @@ const baseTheme = EditorView.theme({
   '&': { backgroundColor: 'var(--bg)', color: 'var(--fg)', height: '100%' },
   '.cm-scroller': { fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace', lineHeight: '1.55', overflow: 'auto' },
   '.cm-content': { caretColor: 'var(--cursor)', padding: '6px 0 160px 0' },
-  '.cm-cursor': { borderLeftColor: 'var(--cursor)', borderLeftWidth: '2px' },
-  '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection': { backgroundColor: 'var(--sel) !important' },
   '.cm-gutters': { backgroundColor: 'var(--bg)', color: 'var(--gutterFg)', border: 'none', paddingLeft: '2px' },
   '.cm-activeLine': { backgroundColor: 'var(--line)' },
   '.cm-activeLineGutter': { backgroundColor: 'transparent', color: 'var(--fg)' },
@@ -92,15 +90,19 @@ const baseTheme = EditorView.theme({
 
 // ---------- editor ----------
 let view;
+const opts = { indent: 4, autoClose: true, chips: true, haptics: true };
+const indentC = new Compartment();
+const closeC = new Compartment();
+const indentStr = () => ' '.repeat(opts.indent);
 let lastSent = '';
 function makeState(doc) {
   return EditorState.create({
     doc,
     extensions: [
-      lineNumbers(), diagGutter, highlightActiveLineGutter(), highlightActiveLine(), drawSelection(),
-      history(), indentOnInput(), bracketMatching(), closeBrackets(), indentUnit.of('    '),
+      lineNumbers(), diagGutter, highlightActiveLineGutter(), highlightActiveLine(),
+      history(), indentOnInput(), bracketMatching(), closeC.of(opts.autoClose ? closeBrackets() : []), indentC.of(indentUnit.of(indentStr())),
       cpp(), syntaxHighlighting(hl), baseTheme, diagField,
-      keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, { key: 'Tab', run: (v) => { v.dispatch(v.state.replaceSelection('    ')); return true; } }]),
+      keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, { key: 'Tab', run: (v) => { v.dispatch(v.state.replaceSelection(indentStr())); return true; } }]),
       EditorView.contentAttributes.of({ autocorrect: 'off', autocapitalize: 'off', spellcheck: 'false', autocomplete: 'off' }),
       EditorView.updateListener.of((u) => {
         if (u.docChanged) {
@@ -142,20 +144,46 @@ function jumpTo(line) {
 
 // ---------- key row above the keyboard ----------
 const KEYS = ['{', '}', '(', ')', '[', ']', ';', '<', '>', '&', '|', '!', '=', '+', '-', '*', '/', '%', '"', "'", ',', '#', ':', '~', '^', '_'];
+// [label, text, caret offset from the end of the inserted text]
+const CHIPS = [
+  ['for', 'for (int i = 0; i < n; i++) {\n\t\n}', -2],
+  ['cin>>', 'cin >> ', 0], ['cout<<', 'cout << ', 0], ['<<', ' << ', 0], ['>>', ' >> ', 0],
+  ['&&', ' && ', 0], ['||', ' || ', 0], ['::', '::', 0], ['->', '->', 0],
+  ['vector<', 'vector<>', -1], ['pair<', 'pair<>', -1], ['.size()', '.size()', 0],
+  ['.begin(),.end()', '.begin(), .end()', 0], ['sort(', 'sort()', -1], ['"\\n"', '"\\n"', 0],
+  ['.first', '.first', 0], ['.second', '.second', 0],
+];
+const buzz = () => { if (opts.haptics) post({ t: 'haptic' }); };
+function insertText(text, back = 0) {
+  const sel = view.state.selection.main;
+  const line = view.state.doc.lineAt(sel.from);
+  const lead = (line.text.match(/^\s*/) || [''])[0];
+  const ins = text.replace(/\t/g, indentStr()).replace(/\n/g, '\n' + lead);
+  view.dispatch({ changes: { from: sel.from, to: sel.to, insert: ins }, selection: { anchor: sel.from + ins.length + back } });
+}
 function buildKeyRow() {
   const row = document.getElementById('keys');
+  row.innerHTML = '';
   const mk = (label, fn, cls = '') => {
     const b = document.createElement('button'); b.textContent = label; b.className = cls;
-    b.addEventListener('pointerdown', (e) => { e.preventDefault(); fn(); });
+    b.addEventListener('pointerdown', (e) => { e.preventDefault(); buzz(); fn(); });
     row.append(b);
   };
-  mk('⇥', () => { view.dispatch(view.state.replaceSelection('    ')); }, 'wide');
+  const sep = () => { const d = document.createElement('i'); row.append(d); };
+  mk('⇥', () => view.dispatch(view.state.replaceSelection(indentStr())), 'wide');
   mk('↶', () => undo(view), 'wide'); mk('↷', () => redo(view), 'wide');
   for (const k of KEYS) mk(k, () => {
-    const ins = k === '{' ? '{}' : k === '(' ? '()' : k === '[' ? '[]' : k === '"' ? '""' : k === "'" ? "''" : k;
-    const sel = view.state.selection.main;
-    view.dispatch({ changes: { from: sel.from, to: sel.to, insert: ins }, selection: { anchor: sel.from + (ins.length === 2 ? 1 : ins.length) } });
+    const pair = { '{': '{}', '(': '()', '[': '[]', '"': '""', "'": "''" }[k];
+    if (pair && opts.autoClose) insertText(pair, -1); else insertText(k);
   });
+  sep();
+  mk('//', () => toggleComment(view), 'wide act');
+  mk('⧉', () => copyLineDown(view), 'wide act');
+  mk('⌫ line', () => deleteLine(view), 'wide act');
+  mk('▢', () => selectLine(view), 'wide act');
+  mk('↑', () => moveLineUp(view), 'wide act');
+  mk('↓', () => moveLineDown(view), 'wide act');
+  if (opts.chips) { sep(); for (const [l, t, b] of CHIPS) mk(l, () => insertText(t, b), 'chip'); }
 }
 
 // ---------- public API (called from Swift via evaluateJavaScript) ----------
@@ -173,6 +201,14 @@ window.cf = {
     keys.style.bottom = h + 'px'; keys.classList.toggle('up', h > 40);
     ed.style.bottom = (h > 40 ? h + 50 : 0) + 'px';
     if (h > 40 && view) view.dispatch({ effects: EditorView.scrollIntoView(view.state.selection.main.head, { y: 'nearest', yMargin: 24 }) });
+  },
+  setOptions(o) {
+    Object.assign(opts, o);
+    if (view) view.dispatch({ effects: [
+      indentC.reconfigure(indentUnit.of(indentStr())),
+      closeC.reconfigure(opts.autoClose ? closeBrackets() : []),
+    ] });
+    buildKeyRow();
   },
   jumpTo,
 };

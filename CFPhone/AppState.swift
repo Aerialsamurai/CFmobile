@@ -30,6 +30,8 @@ final class AppState: ObservableObject {
     @Published var bootError: String?
     @Published var editor: EditorHost?
     @Published var engine: EngineHost?
+    @Published var reader: ReaderHost?
+    @Published var codeSegment = 1   // 0 = problem statement, 1 = code
 
     // problems
     @Published var problems: [Problem] = []
@@ -89,8 +91,9 @@ final class AppState: ObservableObject {
             ed.onCode = { [weak self] c in Task { @MainActor in self?.codeChanged(c) } }
             editor = ed
             engine = EngineHost(base: base)
-            ed.setTheme(settings.theme)
-            ed.setFontSize(settings.fontSize)
+            let rd = ReaderHost(base: base)
+            reader = rd
+            applyAppearance()
             openProblem(currentID)
         } catch {
             bootError = "Could not start local server: \(error.localizedDescription)"
@@ -145,6 +148,7 @@ final class AppState: ObservableObject {
         results = [:]
         diagnostics = []
         editor?.setCode(text)
+        reader?.render(problems.first { $0.id == id })
         if !FileManager.default.fileExists(atPath: codeFile(id).path) { try? text.write(to: codeFile(id), atomically: true, encoding: .utf8) }
     }
 
@@ -163,26 +167,85 @@ final class AppState: ObservableObject {
         if !code.isEmpty { try? code.write(to: codeFile(currentID), atomically: true, encoding: .utf8) }
     }
 
-    func addImported(_ ip: ImportedProblem, contestId: Int, index: String, url: String) {
+    func addImported(_ ip: ImportedProblem, contestId: Int, index: String, url: String, tags: [String]? = nil, rating: Int? = nil) {
         let id = "\(contestId)\(index)"
-        var tests: [TestCase] = []
-        let ins = ip.inputs ?? [], outs = ip.outputs ?? []
-        for i in 0..<min(ins.count, outs.count) { tests.append(TestCase(input: ins[i], expected: outs[i], isSample: true)) }
+        let tests = buildSampleTests(inputs: ip.inputs ?? [], outputs: ip.outputs ?? [])
         let title = "\(contestId)\(index) · \(ip.title ?? "Problem")"
+        let ioMode = ip.input
         if let i = problems.firstIndex(where: { $0.id == id }) {
-            // keep the user's custom tests, refresh samples
+            // keep the user's custom tests, refresh samples + statement
             let custom = problems[i].tests.filter { !$0.isSample }
             problems[i].tests = tests + custom
             problems[i].title = title
             problems[i].timeLimitMs = ip.timeLimitMs ?? 2000
+            problems[i].statementHTML = ip.statement
+            problems[i].memoryLimit = ip.memoryLimit
+            problems[i].ioMode = ioMode
+            if let tags = tags { problems[i].tags = tags }
+            if let rating = rating { problems[i].rating = rating }
             problems[i].updated = Date()
         } else {
-            problems.insert(Problem(id: id, title: title, url: url, timeLimitMs: ip.timeLimitMs ?? 2000, tests: tests,
-                                    contestId: contestId, index: index, updated: Date()), at: 1)
+            var p = Problem(id: id, title: title, url: url, timeLimitMs: ip.timeLimitMs ?? 2000, tests: tests,
+                            contestId: contestId, index: index, updated: Date())
+            p.statementHTML = ip.statement
+            p.memoryLimit = ip.memoryLimit
+            p.ioMode = ioMode
+            p.tags = tags
+            p.rating = rating
+            problems.insert(p, at: 1)
         }
         persistProblems()
         openProblem(id)
+        codeSegment = 0          // show the statement first
         selectedTab = 0
+    }
+
+    /// Turns raw samples into tests, splitting multi-case samples into one test per case.
+    private func buildSampleTests(inputs: [String], outputs: [String]) -> [TestCase] {
+        var tests: [TestCase] = []
+        for i in 0..<min(inputs.count, outputs.count) {
+            tests += sampleTests(number: i + 1, input: inputs[i], expected: outputs[i], sizes: nil, split: settings.autoSplit)
+        }
+        return tests
+    }
+
+    private func sampleTests(number n: Int, input: String, expected: String, sizes: [Int]?, split: Bool) -> [TestCase] {
+        if split, let parts = SampleSplitter.split(input: input, expected: expected, sizes: sizes) {
+            var out: [TestCase] = []
+            for (k, part) in parts.enumerated() {
+                out.append(TestCase(input: part.input, expected: part.expected, isSample: true, label: "Sample \(n) · case \(k + 1)", group: n))
+            }
+            out.append(TestCase(input: input, expected: expected, isSample: true, label: "Sample \(n) · all cases together", isCombined: true, group: n))
+            return out
+        }
+        return [TestCase(input: input, expected: expected, isSample: true, group: n)]
+    }
+
+    /// Re-splits one sample. `sizes` = lines per case (one number, or one per case); nil = automatic.
+    /// Returns false when the sample can't be split that way.
+    @discardableResult
+    func resplit(group: Int, sizes: [Int]?) -> Bool {
+        guard let i = problems.firstIndex(where: { $0.id == currentID }) else { return false }
+        guard let original = problems[i].tests.first(where: { $0.isSample && $0.group == group && ($0.isCombined == true || $0.label == nil) }) else { return false }
+        guard SampleSplitter.split(input: original.input, expected: original.expected, sizes: sizes) != nil else { return false }
+        let fresh = sampleTests(number: group, input: original.input, expected: original.expected, sizes: sizes, split: true)
+        guard let at = problems[i].tests.firstIndex(where: { $0.isSample && $0.group == group }) else { return false }
+        problems[i].tests.removeAll { $0.isSample && $0.group == group }
+        problems[i].tests.insert(contentsOf: fresh, at: min(at, problems[i].tests.count))
+        results = [:]
+        persistProblems()
+        return true
+    }
+
+    /// Undo splitting for one sample (back to a single combined test).
+    func unsplit(group: Int) {
+        guard let i = problems.firstIndex(where: { $0.id == currentID }),
+              let original = problems[i].tests.first(where: { $0.isSample && $0.group == group && $0.isCombined == true }),
+              let at = problems[i].tests.firstIndex(where: { $0.isSample && $0.group == group }) else { return }
+        problems[i].tests.removeAll { $0.isSample && $0.group == group }
+        problems[i].tests.insert(TestCase(input: original.input, expected: original.expected, isSample: true, group: group), at: min(at, problems[i].tests.count))
+        results = [:]
+        persistProblems()
     }
 
     func deleteProblem(_ id: String) {
@@ -203,6 +266,15 @@ final class AppState: ObservableObject {
         updateCurrent { $0.tests.append(TestCase(input: input, expected: expected, isSample: false)) }
     }
 
+    /// From the submission detail screen: save the test your solution failed on.
+    func addFailingTest(problemID: String, input: String, expected: String) {
+        guard let i = problems.firstIndex(where: { $0.id == problemID }) else { return }
+        let inp = input.hasSuffix("\n") ? input : input + "\n"
+        problems[i].tests.append(TestCase(input: inp, expected: expected.isEmpty ? "" : (expected.hasSuffix("\n") ? expected : expected + "\n"),
+                                          isSample: false, label: "Failed on Codeforces"))
+        persistProblems()
+    }
+
     func deleteTest(_ id: UUID) {
         updateCurrent { $0.tests.removeAll { $0.id == id } }
         results[id] = nil
@@ -213,6 +285,9 @@ final class AppState: ObservableObject {
     func applyAppearance() {
         editor?.setTheme(settings.theme)
         editor?.setFontSize(settings.fontSize)
+        editor?.setOptions(indent: settings.indentSize, autoClose: settings.autoClose, chips: settings.snippetRow, haptics: settings.haptics)
+        reader?.setTheme(settings.theme)
+        reader?.setFontSize(settings.readerFontSize)
     }
 
     // MARK: - Compile / run

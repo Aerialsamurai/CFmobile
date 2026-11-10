@@ -1,0 +1,51 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="stylesheet" href="katex/katex.min.css">
+<style>
+:root { --rfs: 17px; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html { background: var(--bg); -webkit-text-size-adjust: 100%; }
+body { margin: 0; padding: 14px 16px calc(40px + env(safe-area-inset-bottom)); background: var(--bg); color: var(--fg);
+  font: var(--rfs)/1.6 -apple-system, system-ui, "SF Pro Text", sans-serif; overflow-x: hidden; }
+h1 { font-size: 1.45em; line-height: 1.25; margin: 4px 0 10px; letter-spacing: -.01em; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.chip { font-size: .72em; padding: 3px 9px; border-radius: 999px; background: var(--line); color: var(--fg); }
+.chip b { color: var(--gutterFg); font-weight: 600; margin-right: 3px; text-transform: uppercase; letter-spacing: .04em; font-size: .9em; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.tag { font-size: .72em; padding: 2px 9px; border-radius: 6px; background: var(--bar); border: 1px solid var(--border); color: var(--gutterFg); }
+.tag.rating { color: var(--warn); border-color: var(--warn); }
+.statement { margin-top: 14px; }
+.statement > div > p:first-child, .statement p { margin: 0 0 .85em; }
+.section-title, .statement .section-title { font-size: .8em; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); margin: 1.6em 0 .6em; }
+.statement ul, .statement ol { padding-left: 1.3em; margin: 0 0 .9em; }
+.statement li { margin: .25em 0; }
+.statement img { max-width: 100%; height: auto; display: block; margin: .8em auto; background: #fff; border-radius: 6px; }
+.statement pre, .statement code { font: .88em/1.5 ui-monospace, Menlo, monospace; }
+.statement pre { background: var(--bar); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; overflow-x: auto; margin: 0 0 1em; }
+.statement table { border-collapse: collapse; display: block; overflow-x: auto; max-width: 100%; margin: .8em 0; }
+.statement td, .statement th { border: 1px solid var(--border); padding: 4px 9px; }
+.statement a { color: var(--accent); }
+.tex-font-style-tt { font-family: ui-monospace, Menlo, monospace; font-size: .92em; }
+.tex-font-style-bf { font-weight: 700; }
+.tex-font-style-it, .tex-font-style-sl { font-style: italic; }
+.tex-span, .tex-formula { white-space: normal; }
+.katex { font-size: 1.04em; }
+.katex-display { overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
+.sample-test, .sample-tests, .input-output-copier { display: none; }
+.samples { margin-top: 1.2em; }
+.sample { margin-bottom: 14px; }
+.sample-n { font-size: .8em; color: var(--gutterFg); margin-bottom: 4px; }
+.sample-part { margin-bottom: 8px; }
+.sample-head { display: flex; justify-content: space-between; align-items: center; font-size: .72em; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--gutterFg); padding: 0 2px 4px; }
+.copy { border: 0; background: transparent; color: var(--accent); font: inherit; text-transform: none; letter-spacing: 0; padding: 2px 6px; }
+.sample-pre { margin: 0; padding: 10px 12px; background: var(--bar); border: 1px solid var(--border); border-radius: 8px; overflow-x: auto;
+  font: .86em/1.5 ui-monospace, Menlo, monospace; white-space: pre; }
+.note { margin-top: 1.4em; }
+.note p { margin: 0 0 .85em; }
+.empty { text-align: center; padding: 18vh 24px 0; color: var(--gutterFg); }
+.empty .big { font-size: 48px; margin-bottom: 8px; } .empty .sub { font-size: .85em; margin-top: 8px; line-height: 1.5; }
+</style></head>
+<body><div id="doc"></div>
+<script type="module" src="reader.js"></script>
+</body></html>

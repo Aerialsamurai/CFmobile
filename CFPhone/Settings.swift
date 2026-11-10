@@ -18,6 +18,12 @@ final class Settings: ObservableObject {
     @Published var notifyDay: Bool { didSet { d.set(notifyDay, forKey: "notifyDay") } }
     @Published var notifyQuarter: Bool { didSet { d.set(notifyQuarter, forKey: "notifyQuarter") } }
     @Published var muted: [Int] { didSet { d.set(muted, forKey: "muted") } }
+    @Published var indentSize: Int { didSet { d.set(indentSize, forKey: "indentSize") } }
+    @Published var autoClose: Bool { didSet { d.set(autoClose, forKey: "autoClose") } }
+    @Published var snippetRow: Bool { didSet { d.set(snippetRow, forKey: "snippetRow") } }
+    @Published var haptics: Bool { didSet { d.set(haptics, forKey: "haptics") } }
+    @Published var readerFontSize: Double { didSet { d.set(readerFontSize, forKey: "readerFontSize") } }
+    @Published var autoSplit: Bool { didSet { d.set(autoSplit, forKey: "autoSplit") } }
 
     init() {
         theme = d.string(forKey: "theme") ?? "Dark Modern"
@@ -28,6 +34,12 @@ final class Settings: ObservableObject {
         notifyDay = d.object(forKey: "notifyDay") as? Bool ?? true
         notifyQuarter = d.object(forKey: "notifyQuarter") as? Bool ?? true
         muted = d.array(forKey: "muted") as? [Int] ?? []
+        indentSize = d.object(forKey: "indentSize") as? Int ?? 4
+        autoClose = d.object(forKey: "autoClose") as? Bool ?? true
+        snippetRow = d.object(forKey: "snippetRow") as? Bool ?? true
+        haptics = d.object(forKey: "haptics") as? Bool ?? true
+        readerFontSize = d.object(forKey: "readerFontSize") as? Double ?? 17
+        autoSplit = d.object(forKey: "autoSplit") as? Bool ?? true
     }
 
     var isDark: Bool { Self.themes.first { $0.name == theme }?.dark ?? true }

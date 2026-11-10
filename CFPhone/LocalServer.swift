@@ -92,6 +92,10 @@ final class LocalServer {
         case "json": return "application/json"
         case "wasm": return "application/wasm"
         case "tar": return "application/x-tar"
+        case "woff2": return "font/woff2"
+        case "woff": return "font/woff"
+        case "svg": return "image/svg+xml"
+        case "png": return "image/png"
         default: return "application/octet-stream"
         }
     }
