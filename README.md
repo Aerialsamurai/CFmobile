@@ -59,6 +59,8 @@ The app isn't on the App Store. You install the `.ipa` file yourself using a fre
 
 **[⬇️ Download CFMobile.ipa](../../releases/latest/download/CFMobile.ipa)** (about 27 MB)
 
+Direct link to share: `https://github.com/Aerialsamurai/cfmobile/releases/latest/download/CFMobile.ipa`
+
 It's rebuilt automatically from the source in this repository; the release page shows which commit it came from.
 
 ### 2. Install it with Sideloadly (easiest)
