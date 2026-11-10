@@ -47,9 +47,12 @@ const srv = http.createServer((q, r) => {
   const onPage = await pg.evaluate(() => document.getElementById('keys').className);
   await pg.screenshot({ path: path.join(shots, 'keys-io.png') });
   await btn('cout <<').click();
+  await btn('endl').click();
   const afterPick = await pg.evaluate(() => document.getElementById('keys').className);
   log.push(['page opens', onPage.includes('page')]);
-  log.push(['pick inserts + returns home', (await code()).includes('cout << ') && afterPick.includes('home')]);
+  log.push(['picks insert and the page stays open', (await code()).includes('cout << ') && (await code()).includes('endl') && afterPick.includes('page')]);
+  await btn('‹').click();
+  log.push(['back returns to the home row', (await pg.evaluate(() => document.getElementById('keys').className)).includes('home')]);
 
   // 5. editor shrinks to make room for the bar (no overlap)
   const geo = await pg.evaluate(() => ({ ed: parseFloat(document.getElementById('editor').style.bottom), keys: document.getElementById('keys').offsetHeight }));

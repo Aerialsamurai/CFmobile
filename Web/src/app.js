@@ -233,8 +233,7 @@ function renderKeys() {
       const long = l.length > 3;
       add(l, long ? 'long' : '', () => {
         buzz();
-        if (act) act(view); else insertText(t, b);
-        if (!pg.sticky) { keyPage = 'home'; renderKeys(); }
+        if (act) act(view); else insertText(t, b);   // stay on this page until the user taps ‹
       });
     }
   }
