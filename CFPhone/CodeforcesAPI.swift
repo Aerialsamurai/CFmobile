@@ -7,7 +7,20 @@ struct APIError: LocalizedError {
 }
 
 enum CFAPI {
+    /// Codeforces allows about one API call per 2 seconds; when it says so, wait and try again (twice).
     static func get<T: Decodable>(_ path: String, _ query: [String: String] = [:]) async throws -> T {
+        var lastError: Error = APIError("Codeforces API error")
+        for attempt in 0..<3 {
+            do { return try await getOnce(path, query) }
+            catch let e as APIError where e.message.lowercased().contains("limit exceeded") {
+                lastError = e
+                try? await Task.sleep(nanoseconds: UInt64(2_300_000_000 * Double(attempt + 1)))
+            }
+        }
+        throw lastError
+    }
+
+    private static func getOnce<T: Decodable>(_ path: String, _ query: [String: String]) async throws -> T {
         var c = URLComponents(string: "https://codeforces.com/api/\(path)")!
         c.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
         var req = URLRequest(url: c.url!)
@@ -34,6 +47,21 @@ enum CFAPI {
     static func contestProblems(_ contestId: Int) async throws -> [CFProblem] {
         let s: CFStandings = try await get("contest.standings", ["contestId": String(contestId), "from": "1", "count": "1"])
         return s.problems
+    }
+
+    static func userInfo(_ handle: String) async throws -> CFUser {
+        let list: [CFUser] = try await get("user.info", ["handles": handle])
+        guard let u = list.first else { throw APIError("No such user: \(handle)") }
+        return u
+    }
+
+    static func ratingHistory(_ handle: String) async throws -> [CFRatingChange] {
+        try await get("user.rating", ["handle": handle])
+    }
+
+    /// Every submission the user ever made (the API returns them newest first).
+    static func allSubmissions(handle: String) async throws -> [CFSubmission] {
+        try await get("user.status", ["handle": handle])
     }
 
     static func problemURL(contestId: Int, index: String) -> URL {

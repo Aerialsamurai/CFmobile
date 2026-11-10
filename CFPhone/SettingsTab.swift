@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 struct SettingsTab: View {
     @EnvironmentObject var app: AppState
     @EnvironmentObject var settings: Settings
+    @Environment(\.dismiss) private var dismiss
     @State private var showLogin = false
     @State private var importing = false
     @State private var editTemplate = false
@@ -70,6 +71,8 @@ struct SettingsTab: View {
                     Toggle("15 minutes before", isOn: $settings.notifyQuarter)
                 }
 
+                SupportSection()
+
                 Section("About") {
                     if let ms = app.lastCompileMs { LabeledContent("Last compile", value: "\(ms) ms") }
                     Text("Compiles on-device with Clang (WebAssembly). Exceptions (try/catch) aren't supported. Programs run slower than on Codeforces, so confirm time limits there.")
@@ -77,6 +80,8 @@ struct SettingsTab: View {
                 }
             }
             .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .sheet(isPresented: $showLogin) { LoginSheet() }
             .sheet(isPresented: $editTemplate) { TemplateEditor() }
             .fileImporter(isPresented: $importing, allowedContentTypes: [.plainText, .sourceCode, .cPlusPlusSource, .data]) { result in
@@ -108,4 +113,57 @@ struct TemplateEditor: View {
         }
         .onAppear { text = app.loadTemplate() }
     }
+}
+
+// MARK: - Support
+
+struct SupportSection: View {
+    var body: some View {
+        Section {
+            Link(destination: Support.repoURL) { Label("Star on GitHub", systemImage: "star") }
+            if let u = Support.buyMeACoffee { Link(destination: u) { Label("Buy me a coffee", systemImage: "cup.and.saucer") } }
+            if let u = Support.githubSponsors { Link(destination: u) { Label("Sponsor on GitHub", systemImage: "heart") } }
+            if let u = Support.koFi { Link(destination: u) { Label("Support on Ko-fi", systemImage: "heart.circle") } }
+            ShareLink(item: Support.downloadURL, message: Text("CF Mobile — solve Codeforces problems on your iPhone")) {
+                Label("Share with a friend", systemImage: "square.and.arrow.up")
+            }
+            Link(destination: Support.issuesURL) { Label("Report a bug or suggest a feature", systemImage: "bubble.left.and.exclamationmark.bubble.right") }
+        } header: { Text("Support CF Mobile") } footer: {
+            Text("CF Mobile is free and open source. A star or a share helps more people find it.")
+        }
+    }
+}
+
+/// Shown once, after the user's own Accepted verdict (never during a live contest).
+struct SupportPromptSheet: View {
+    @EnvironmentObject var settings: Settings
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("🎉").font(.system(size: 54))
+            Text("Nice — Accepted!").font(.title2.bold())
+            Text("If CF Mobile is helping, a GitHub star is the easiest way to support it and helps other people find it.")
+                .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            VStack(spacing: 10) {
+                Button {
+                    openURL(Support.repoURL); finish()
+                } label: { Label("Star on GitHub", systemImage: "star.fill").frame(maxWidth: .infinity) }
+                    .buttonStyle(.borderedProminent)
+                if let u = Support.buyMeACoffee {
+                    Button {
+                        openURL(u); finish()
+                    } label: { Label("Buy me a coffee", systemImage: "cup.and.saucer").frame(maxWidth: .infinity) }
+                        .buttonStyle(.bordered)
+                }
+                Button("Maybe later") { finish() }.foregroundStyle(.secondary)
+            }
+            Text("You won't be asked again.").font(.caption2).foregroundStyle(.tertiary)
+        }
+        .padding(24)
+        .presentationDetents([.medium])
+    }
+
+    private func finish() { settings.supportPromptDone = true; dismiss() }
 }

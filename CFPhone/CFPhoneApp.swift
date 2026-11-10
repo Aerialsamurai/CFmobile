@@ -41,7 +41,7 @@ struct RootView: View {
                     TestsTab().tabItem { Label("Tests", systemImage: "checklist") }.tag(1)
                     SubmissionsTab().tabItem { Label("Submissions", systemImage: "paperplane") }.tag(2)
                     ContestsTab().tabItem { Label("Contests", systemImage: "trophy") }.tag(3)
-                    SettingsTab().tabItem { Label("Settings", systemImage: "gearshape") }.tag(4)
+                    ProfileTab().tabItem { Label("Profile", systemImage: "person.crop.circle") }.tag(4)
                 }
                 // The compiler lives in this invisible 1×1 web view so it keeps running on every tab.
                 .overlay(alignment: .topLeading) {

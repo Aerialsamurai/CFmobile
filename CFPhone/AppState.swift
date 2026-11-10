@@ -47,6 +47,7 @@ final class AppState: ObservableObject {
     // cross-tab requests
     @Published var selectedTab = 0
     @Published var submissionsNeedRefresh = 0
+    @Published var liveContestActive = false   // set by the Contests tab; used to keep prompts out of contests
 
     private var server: LocalServer?
     private var code = ""

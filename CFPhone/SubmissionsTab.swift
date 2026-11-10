@@ -8,6 +8,8 @@ struct SubmissionsTab: View {
     @State private var loading = false
     @State private var polling: Task<Void, Never>?
     @State private var picked: CFSubmission?
+    @State private var knownPending: Set<Int> = []
+    @State private var showSupport = false
 
     var body: some View {
         NavigationStack {
@@ -24,6 +26,7 @@ struct SubmissionsTab: View {
             .refreshable { await load() }
             .overlay { if loading && items.isEmpty { ProgressView() } }
             .sheet(item: $picked) { SubmissionDetailSheet(sub: $0) }
+            .sheet(isPresented: $showSupport) { SupportPromptSheet() }
         }
         .onAppear { startPolling() }
         .onDisappear { polling?.cancel() }
@@ -35,8 +38,18 @@ struct SubmissionsTab: View {
         guard !settings.handle.isEmpty else { return }
         loading = true
         defer { loading = false }
-        do { items = try await CFAPI.submissions(handle: settings.handle); error = "" }
-        catch { self.error = error.localizedDescription }
+        do {
+            let fresh = try await CFAPI.submissions(handle: settings.handle)
+            // a submission that was pending and is now Accepted = the user just got an AC
+            let justAccepted = fresh.contains { knownPending.contains($0.id) && $0.verdict == "OK" }
+            knownPending = Set(fresh.filter { $0.isPending }.map { $0.id })
+            items = fresh
+            error = ""
+            if justAccepted && !settings.supportPromptDone && !app.liveContestActive
+                && fresh.filter({ $0.verdict == "OK" }).count >= 5 {
+                showSupport = true
+            }
+        } catch { self.error = error.localizedDescription }
     }
 
     /// Refreshes every 3 s while something is still being judged (Codeforces allows ~1 request / 2 s), otherwise every 30 s.

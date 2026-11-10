@@ -158,3 +158,32 @@ struct CFSubmission: Codable, Identifiable, Hashable {
 struct CFStandings: Decodable {
     let problems: [CFProblem]
 }
+
+// MARK: - Profile
+
+struct CFUser: Codable, Hashable {
+    let handle: String
+    let rating: Int?
+    let maxRating: Int?
+    let rank: String?
+    let maxRank: String?
+    let avatar: String?
+    let titlePhoto: String?
+    let friendOfCount: Int?
+    let contribution: Int?
+    let country: String?
+    let organization: String?
+    let registrationTimeSeconds: Int?
+}
+
+struct CFRatingChange: Codable, Identifiable, Hashable {
+    let contestId: Int
+    let contestName: String
+    let rank: Int
+    let ratingUpdateTimeSeconds: Int
+    let oldRating: Int
+    let newRating: Int
+    var id: Int { contestId }
+    var date: Date { Date(timeIntervalSince1970: TimeInterval(ratingUpdateTimeSeconds)) }
+    var delta: Int { newRating - oldRating }
+}

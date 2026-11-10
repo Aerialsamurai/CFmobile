@@ -50,6 +50,7 @@ struct ContestsTab: View {
         defer { loading = false }
         do {
             contests = try await CFAPI.contests()
+            app.liveContestActive = contests.contains { $0.phase == "CODING" }
             error = ""
             if await Notifier.requestPermission() { await Notifier.schedule(contests: contests, settings: settings) }
         } catch { self.error = error.localizedDescription }

@@ -24,6 +24,7 @@ final class Settings: ObservableObject {
     @Published var haptics: Bool { didSet { d.set(haptics, forKey: "haptics") } }
     @Published var readerFontSize: Double { didSet { d.set(readerFontSize, forKey: "readerFontSize") } }
     @Published var autoSplit: Bool { didSet { d.set(autoSplit, forKey: "autoSplit") } }
+    @Published var supportPromptDone: Bool { didSet { d.set(supportPromptDone, forKey: "supportPromptDone") } }
 
     init() {
         theme = d.string(forKey: "theme") ?? "Dark Modern"
@@ -40,6 +41,7 @@ final class Settings: ObservableObject {
         haptics = d.object(forKey: "haptics") as? Bool ?? true
         readerFontSize = d.object(forKey: "readerFontSize") as? Double ?? 17
         autoSplit = d.object(forKey: "autoSplit") as? Bool ?? true
+        supportPromptDone = d.object(forKey: "supportPromptDone") as? Bool ?? false
     }
 
     var isDark: Bool { Self.themes.first { $0.name == theme }?.dark ?? true }
