@@ -7,17 +7,20 @@ struct EditorTab: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                if let rd = app.reader {
-                    ReaderWebView(host: rd)
-                        .opacity(app.codeSegment == 0 ? 1 : 0)
-                        .allowsHitTesting(app.codeSegment == 0)
-                }
-                if let ed = app.editor {
-                    EditorWebView(host: ed)
-                        .ignoresSafeArea(.keyboard)
-                        .opacity(app.codeSegment == 1 ? 1 : 0)
-                        .allowsHitTesting(app.codeSegment == 1)
+            VStack(spacing: 0) {
+                if let cm = app.contestMode { ContestBar(state: cm) }
+                ZStack {
+                    if let rd = app.reader {
+                        ReaderWebView(host: rd)
+                            .opacity(app.codeSegment == 0 ? 1 : 0)
+                            .allowsHitTesting(app.codeSegment == 0)
+                    }
+                    if let ed = app.editor {
+                        EditorWebView(host: ed)
+                            .ignoresSafeArea(.keyboard)
+                            .opacity(app.codeSegment == 1 ? 1 : 0)
+                            .allowsHitTesting(app.codeSegment == 1)
+                    }
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -61,6 +64,7 @@ struct EditorTab: View {
                 if seg == 0 { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
             }
             .sheet(isPresented: $showProblems) { ProblemsSheet() }
+            .sheet(item: $app.importRequest) { r in ImportProblemSheet(contestId: r.contestId, index: r.index) }
         }
     }
 }

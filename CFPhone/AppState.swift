@@ -58,6 +58,11 @@ final class AppState: ObservableObject {
             else { UserDefaults.standard.removeObject(forKey: "virtualRun") }
         }
     }
+    // live-contest mode: bar above the editor with countdown + A–F status
+    @Published var contestMode: ContestModeState?
+    @Published var contestStatus: [String: ProblemStatus] = [:]
+    @Published var importRequest: ImportRequest?
+    var contestTask: Task<Void, Never>?
     @Published var liveContestActive = false   // set by the Contests tab; used to keep prompts out of contests
 
     private var server: LocalServer?

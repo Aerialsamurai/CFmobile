@@ -203,6 +203,15 @@ struct LiveContestSheet: View {
                 if let e = contest.end {
                     Section { Text("Ends in ") + Text(e, style: .timer).bold() }
                 }
+                Section {
+                    Button {
+                        app.enterContestMode(contest, problems: problems)
+                        dismiss()
+                    } label: { Label("Enter contest mode", systemImage: "scope") }
+                        .disabled(problems.isEmpty)
+                } footer: {
+                    Text("Pins a countdown and your A–F verdicts above the editor, so you can switch problems with one tap.")
+                }
                 Section { NavigationLink { StandingsView(contest: contest) } label: { Label("Standings", systemImage: "list.number") } }
                 Section("Problems") {
                     ForEach(problems, id: \.index) { p in
