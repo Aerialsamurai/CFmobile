@@ -9,6 +9,8 @@ Read the statement, write C++ in a real editor, test it, and submit — no lapto
 
 [![Download IPA](https://img.shields.io/badge/Download-CFMobile.ipa-0a84ff?style=for-the-badge&logo=apple&logoColor=white)](../../releases/latest/download/CFMobile.ipa)
 
+[![GitHub stars](https://img.shields.io/github/stars/Aerialsamurai/cfmobile?style=for-the-badge&logo=github&label=Star)](https://github.com/Aerialsamurai/cfmobile)
+
 [Install guide](#install-on-your-iphone) · [Features](#what-it-does) · [FAQ](#faq)
 
 </div>
@@ -44,6 +46,7 @@ Read the statement, write C++ in a real editor, test it, and submit — no lapto
 | 🚀 **Submit** | Submit straight from the Tests tab. |
 | 📊 **Submissions** | Live verdicts. Tap a failed one to see **which test failed, the input, the expected answer and yours**, and why they differ. |
 | 🗂 **Problemset browser** | Search and filter by rating, tags and solved/unsolved, just like on the site. |
+| 📈 **Profile & stats** | Your rating graph, **daily streak**, a yearly activity heatmap, and CF Analytics-style charts: solved by rating, tag and problem letter, verdicts, languages, and problems you tried but haven't solved. |
 | 🏆 **Contests** | Live and upcoming contests, one-tap register, reminders 24 h and 15 min before, live-contest problem list. |
 | 📝 **Your template** | Import a `.cpp`/`.txt` file or edit it in the app; it opens with every new problem. |
 
@@ -146,6 +149,14 @@ Locally (Mac with Xcode): `cd Web && npm install && node build.mjs && cp -R dist
 - `Web/src/diagnostics.js` turns compiler output into the short messages.
 
 Contributions are welcome — especially fixes for Codeforces page changes, new themes, and support for other judges.
+
+## Support the project
+
+CF Mobile is free and open source. If it helps you:
+
+- ⭐ **[Star the repo](https://github.com/Aerialsamurai/cfmobile)** — the easiest way to help others find it.
+- 📣 Share it with a friend or your CP club: `https://github.com/Aerialsamurai/cfmobile/releases/latest/download/CFMobile.ipa`
+- 🐛 [Report a bug or suggest a feature](../../issues).
 
 ---
 
