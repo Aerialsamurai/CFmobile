@@ -38,16 +38,18 @@ Read the statement, write C++ in a real editor, test it, and submit — no lapto
 
 | | |
 |---|---|
-| 📖 **Read problems in the app** | Statements render with proper math, examples and a copy button. Switch between **Problem** and **Code** with one tap. |
-| ⌨️ **A real C++ editor** | VS Code-style themes (Dark Modern, Dark+, Light Modern, One Dark, Dracula, Monokai, GitHub Dark), line numbers, auto-indent, a symbol row above the keyboard, comment/duplicate/move-line buttons. No autocomplete — you write the code. |
+| 📖 **Read problems in the app** | Statements render with proper math, in the same order as Codeforces, with examples and a copy button. Switch between **Problem** and **Code** with one tap. Optional reading aids: bold key words, one sentence per line, serif font, text size. |
+| 🙈 **Spoiler-free** | Problem tags and rating are hidden by default (a "tap to reveal" chip is there if you're stuck) and show again once you've solved the problem. |
+| ⌨️ **A real C++ editor** | VS Code-style themes (Dark Modern, Dark+, Light Modern, One Dark, Dracula, Monokai, GitHub Dark), line numbers, auto-indent, a shortcut bar above the keyboard (quick keys plus categories: brackets, operators, symbols, I/O, loops/STL, edit actions) that never types while you scroll. No autocomplete — you write the code. |
 | ⚙️ **Compiles on your phone** | Clang 22 (C++23/20/17/14) runs on-device through WebAssembly. Works offline. No server, no cost. |
 | 🔴 **Errors you can actually read** | One short sentence and a red mark on the exact line — *"Line 9 · Integer overflow on × (use long long)"* — instead of a wall of compiler output. Catches overflow and out-of-bounds while testing. |
 | ✅ **Tests** | Samples load automatically. Multi-case samples (`t` test cases) are split into one test per case. Add your own tests, run one or all, see AC / WA / TLE / RE with a diff. |
-| 🚀 **Submit** | Submit straight from the Tests tab. |
+| 🚀 **Submit** | From the Tests tab, either let the app do it, or copy your code and open Codeforces in your own browser (Safari, Brave…), where your saved passwords work. |
 | 📊 **Submissions** | Live verdicts. Tap a failed one to see **which test failed, the input, the expected answer and yours**, and why they differ. |
 | 🗂 **Problemset browser** | Search and filter by rating, tags and solved/unsolved, just like on the site. |
 | 📈 **Profile & stats** | Your rating graph, **daily streak**, a yearly activity heatmap, and CF Analytics-style charts: solved by rating, tag and problem letter, verdicts, languages, and problems you tried but haven't solved. |
-| 🏆 **Contests** | Live and upcoming contests, one-tap register, reminders 24 h and 15 min before, live-contest problem list. |
+| 🏆 **Contests** | Live, upcoming and past contests; one-tap register with a **Registered ✓** badge; reminders 24 h and 15 min before; live-contest problem list. |
+| 🏁 **Standings, friends, virtual contests** | Standings with All / Friends / Me views (live-updating), a friends list with ratings, and timed **virtual contests** run inside the app. |
 | 📝 **Your template** | Import a `.cpp`/`.txt` file or edit it in the app; it opens with every new problem. |
 
 > **Not affiliated with Codeforces.** This is an unofficial, community project.
@@ -92,11 +94,11 @@ To avoid doing this by hand, use **[AltStore](https://altstore.io)** instead of 
 
 ## Using it
 
-1. **Settings → Log in to Codeforces.** You type your password on codeforces.com itself, inside the app. It's never seen or stored by this app.
+1. **Profile → ⚙︎ → set your handle.** Optionally *Log in to Codeforces (in-app)* so the app can submit, register and show failed-test details for you. You type your password on codeforces.com itself; it's never seen or stored by this app. Prefer your own browser? Leave it off — Register and Submit can open Safari / Brave instead.
 2. **Code tab → list icon.** Paste a problem link (e.g. `https://codeforces.com/contest/1900/problem/A`) or tap **Browse problemset**.
 3. Read the statement, tap **Code**, and write your solution.
 4. Tap the **hammer** to check for errors, or the **▶** button to run all tests.
-5. In the **Tests** tab press **Submit**.
+5. In the **Tests** tab press **Submit** and choose how.
 6. Watch the verdict in **Submissions**.
 
 **Template:** *Settings → Template*. Import a file, or edit `template.cpp` in the Files app under *On My iPhone → CF Mobile*.
