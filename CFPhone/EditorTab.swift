@@ -2,6 +2,7 @@ import SwiftUI
 
 struct EditorTab: View {
     @EnvironmentObject var app: AppState
+    @EnvironmentObject var settings: Settings
     @State private var showProblems = false
 
     var body: some View {
@@ -32,20 +33,29 @@ struct EditorTab: View {
                     .pickerStyle(.segmented)
                     .frame(width: 180)
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    if app.compiling {
-                        ProgressView()
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    if app.codeSegment == 0 {
+                        // reading aids for the statement
+                        Menu {
+                            Toggle("Bold key words", isOn: $settings.readerHighlight)
+                            Toggle("One sentence per line", isOn: $settings.readerSentences)
+                            Toggle("Limits summary", isOn: $settings.readerConstraints)
+                            Toggle("Serif font", isOn: $settings.readerSerif)
+                            Divider()
+                            Button { settings.readerFontSize = min(26, settings.readerFontSize + 1) } label: { Label("Larger text", systemImage: "plus.magnifyingglass") }
+                            Button { settings.readerFontSize = max(13, settings.readerFontSize - 1) } label: { Label("Smaller text", systemImage: "minus.magnifyingglass") }
+                        } label: { Image(systemName: "textformat.size") }
                     } else {
+                        if app.compiling {
+                            ProgressView()
+                        } else {
+                            Button { Task { await app.compile() } } label: { Label("Check", systemImage: "hammer") }
+                        }
                         Button {
-                            Task { await app.compile() }
-                        } label: { Label("Check", systemImage: "hammer") }
+                            app.selectedTab = 1
+                            Task { await app.runAll() }
+                        } label: { Image(systemName: "play.fill") }
                     }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        app.selectedTab = 1
-                        Task { await app.runAll() }
-                    } label: { Image(systemName: "play.fill") }
                 }
             }
             .onChange(of: app.codeSegment) { seg in

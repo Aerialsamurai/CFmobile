@@ -20,9 +20,32 @@ struct SettingsTab: View {
                             .multilineTextAlignment(.trailing)
                             .textInputAutocapitalization(.never).autocorrectionDisabled()
                     }
-                    Button("Log in to Codeforces") { showLogin = true }
-                    Text("Needed for submitting and registering. Your password is typed on codeforces.com itself and never stored by this app.")
+                    Button("Log in to Codeforces (in-app)") { showLogin = true }
+                    Text("Optional. It lets the app submit and register for you and show failed-test details. Your password is typed on codeforces.com itself and never stored by this app. The in-app browser can't use Brave's saved passwords, so if you'd rather log in with your own browser, turn on the option below.")
                         .font(.footnote).foregroundStyle(.secondary)
+                }
+
+                Section {
+                    Toggle("Open Codeforces in my default browser", isOn: $settings.useDefaultBrowser)
+                } header: { Text("Browser") } footer: {
+                    Text("On: Register and Submit open Safari / Brave (choose it in iOS Settings ▸ your browser ▸ Default Browser App), so your saved passwords work. Submit copies your code first. Off: the app does it inside its own browser. You can still pick the other way for a single action (long-press Register, or choose in the Submit dialog).")
+                }
+
+                Section {
+                    Toggle("Hide problem tags", isOn: $settings.hideTags)
+                    Toggle("Hide problem rating", isOn: $settings.hideRating)
+                    Toggle("Show them again once I've solved it", isOn: $settings.revealWhenSolved)
+                } header: { Text("Spoilers") } footer: {
+                    Text("Hides tags and rating on the problem page and in the problemset, so they don't give the solution away. On the problem page you can still tap \"tap to reveal\" if you're stuck.")
+                }
+
+                Section {
+                    Toggle("Bold key words (print, minimum, exactly…)", isOn: $settings.readerHighlight)
+                    Toggle("One sentence per line (Input / Output)", isOn: $settings.readerSentences)
+                    Toggle("Limits summary at the top", isOn: $settings.readerConstraints)
+                    Toggle("Serif font", isOn: $settings.readerSerif)
+                } header: { Text("Reading problems") } footer: {
+                    Text("Also in the Aa menu on the Problem screen.")
                 }
 
                 Section("Editor") {

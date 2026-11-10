@@ -48,6 +48,7 @@ enum CFScripts {
     }
     static var extractProblem: String { load("extractProblem") }
     static var submissionDetail: String { load("submissionDetail") }
+    static var registeredContests: String { load("registeredContests") }
 
     /// Fills the submit form. Arguments: code, index, autoSubmit. Returns a status string.
     static let fillSubmit = """

@@ -25,6 +25,18 @@ final class Settings: ObservableObject {
     @Published var readerFontSize: Double { didSet { d.set(readerFontSize, forKey: "readerFontSize") } }
     @Published var autoSplit: Bool { didSet { d.set(autoSplit, forKey: "autoSplit") } }
     @Published var supportPromptDone: Bool { didSet { d.set(supportPromptDone, forKey: "supportPromptDone") } }
+    // problem reader aids
+    @Published var readerHighlight: Bool { didSet { d.set(readerHighlight, forKey: "readerHighlight") } }
+    @Published var readerSentences: Bool { didSet { d.set(readerSentences, forKey: "readerSentences") } }
+    @Published var readerConstraints: Bool { didSet { d.set(readerConstraints, forKey: "readerConstraints") } }
+    @Published var readerSerif: Bool { didSet { d.set(readerSerif, forKey: "readerSerif") } }
+    // spoilers
+    @Published var hideTags: Bool { didSet { d.set(hideTags, forKey: "hideTags") } }
+    @Published var hideRating: Bool { didSet { d.set(hideRating, forKey: "hideRating") } }
+    @Published var revealWhenSolved: Bool { didSet { d.set(revealWhenSolved, forKey: "revealWhenSolved") } }
+    // where Codeforces pages open: true = your default browser (Safari, Brave…), false = the in-app browser
+    @Published var useDefaultBrowser: Bool { didSet { d.set(useDefaultBrowser, forKey: "useDefaultBrowser") } }
+    @Published var registeredLocal: [Int] { didSet { d.set(registeredLocal, forKey: "registeredLocal") } }
 
     init() {
         theme = d.string(forKey: "theme") ?? "Dark Modern"
@@ -42,6 +54,15 @@ final class Settings: ObservableObject {
         readerFontSize = d.object(forKey: "readerFontSize") as? Double ?? 17
         autoSplit = d.object(forKey: "autoSplit") as? Bool ?? true
         supportPromptDone = d.object(forKey: "supportPromptDone") as? Bool ?? false
+        readerHighlight = d.object(forKey: "readerHighlight") as? Bool ?? true
+        readerSentences = d.object(forKey: "readerSentences") as? Bool ?? true
+        readerConstraints = d.object(forKey: "readerConstraints") as? Bool ?? true
+        readerSerif = d.object(forKey: "readerSerif") as? Bool ?? false
+        hideTags = d.object(forKey: "hideTags") as? Bool ?? false
+        hideRating = d.object(forKey: "hideRating") as? Bool ?? false
+        revealWhenSolved = d.object(forKey: "revealWhenSolved") as? Bool ?? true
+        useDefaultBrowser = d.object(forKey: "useDefaultBrowser") as? Bool ?? true
+        registeredLocal = d.array(forKey: "registeredLocal") as? [Int] ?? []
     }
 
     var isDark: Bool { Self.themes.first { $0.name == theme }?.dark ?? true }

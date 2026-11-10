@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TestsTab: View {
     @EnvironmentObject var app: AppState
+    @EnvironmentObject var settings: Settings
     @State private var showAdd = false
     @State private var showSubmit = false
     @State private var confirmSubmit = false
@@ -54,10 +55,38 @@ struct TestsTab: View {
             .sheet(isPresented: $showSubmit) { SubmitSheet(problem: app.current, code: submitCode) }
             .confirmationDialog(app.allPassed ? "Submit \(app.current.id)?" : "Not all tests pass yet. Submit \(app.current.id) anyway?",
                                 isPresented: $confirmSubmit, titleVisibility: .visible) {
-                Button("Submit to Codeforces") {
-                    Task { submitCode = await app.sourceNow(); showSubmit = true }
+                if settings.useDefaultBrowser {
+                    browserButton
+                    inAppButton
+                } else {
+                    inAppButton
+                    browserButton
                 }
                 Button("Cancel", role: .cancel) {}
+            } message: {
+                Text(settings.useDefaultBrowser
+                     ? "Your code is copied to the clipboard and Codeforces opens in your browser, where your saved password works."
+                     : "The app fills in and sends the form for you (needs the in-app Codeforces login).")
+            }
+        }
+    }
+
+    private var inAppButton: some View {
+        Button("Submit in the app") {
+            Task { submitCode = await app.sourceNow(); showSubmit = true }
+        }
+    }
+
+    private var browserButton: some View {
+        Button("Copy code & open in browser") {
+            Task {
+                let code = await app.sourceNow()
+                UIPasteboard.general.string = code
+                if let cid = app.current.contestId, let idx = app.current.index,
+                   let url = URL(string: "https://codeforces.com/contest/\(cid)/submit/\(idx)") {
+                    app.pendingSubmit = true
+                    UIApplication.shared.open(url)
+                }
             }
         }
     }

@@ -21,6 +21,7 @@ struct UserStats {
     var accepted = 0
     var solved = 0
     var ratedSolved = 0
+    var solvedIDs: Set<String> = []
     var acceptance: Double = 0
     var avgAttempts: Double = 0
     var hardest: Int? = nil
@@ -99,6 +100,7 @@ enum StatsEngine {
         }
 
         s.solved = solvedProblem.count
+        s.solvedIDs = Set(solvedProblem.keys)
         s.acceptance = subs.isEmpty ? 0 : Double(s.accepted) / Double(subs.count)
         if !failedBefore.isEmpty {
             s.avgAttempts = Double(failedBefore.values.reduce(0, +)) / Double(failedBefore.count) + 1

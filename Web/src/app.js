@@ -142,49 +142,105 @@ function jumpTo(line) {
   view.dispatch({ selection: { anchor: l.from }, effects: EditorView.scrollIntoView(l.from, { y: 'center' }) });
 }
 
-// ---------- key row above the keyboard ----------
-const KEYS = ['{', '}', '(', ')', '[', ']', ';', '<', '>', '&', '|', '!', '=', '+', '-', '*', '/', '%', '"', "'", ',', '#', ':', '~', '^', '_'];
-// [label, text, caret offset from the end of the inserted text]
-const CHIPS = [
-  ['for', 'for (int i = 0; i < n; i++) {\n\t\n}', -2],
-  ['cin>>', 'cin >> ', 0], ['cout<<', 'cout << ', 0], ['<<', ' << ', 0], ['>>', ' >> ', 0],
-  ['&&', ' && ', 0], ['||', ' || ', 0], ['::', '::', 0], ['->', '->', 0],
-  ['vector<', 'vector<>', -1], ['pair<', 'pair<>', -1], ['.size()', '.size()', 0],
-  ['.begin(),.end()', '.begin(), .end()', 0], ['sort(', 'sort()', -1], ['"\\n"', '"\\n"', 0],
-  ['.first', '.first', 0], ['.second', '.second', 0],
-];
+// ---------- shortcut bar above the keyboard ----------
+// Two levels: a home row (quick keys + category buttons) and one page per category.
+// Keys fire on RELEASE and only if the finger hasn't moved, so scrolling/dragging never types anything.
+// item = [label, text, caretOffsetFromEnd?] inserts text; item = [label, null, 0, action] runs an editor command.
+const Q = (l, t, b = 0) => [l, t, b];
+const PAGES = {
+  br: { label: '[ <', items: [
+    Q('{', '{'), Q('}', '}'), Q('(', '('), Q(')', ')'), Q('[', '['), Q(']', ']'), Q('<', '<'), Q('>', '>'),
+    Q('{}', '{}', -1), Q('()', '()', -1), Q('[]', '[]', -1), Q('<>', '<>', -1), Q('""', '""', -1), Q("''", "''", -1),
+  ] },
+  op: { label: '+ =', items: [
+    Q('+', '+'), Q('-', '-'), Q('*', '*'), Q('/', '/'), Q('%', '%'), Q('=', '='), Q('++', '++'), Q('--', '--'),
+    Q('==', ' == '), Q('!=', ' != '), Q('<=', ' <= '), Q('>=', ' >= '), Q('+=', ' += '), Q('-=', ' -= '), Q('*=', ' *= '), Q('/=', ' /= '),
+  ] },
+  sy: { label: '& ?', items: [
+    Q('&&', ' && '), Q('||', ' || '), Q('!', '!'), Q('&', '&'), Q('|', '|'), Q('^', '^'), Q('~', '~'), Q('?', '?'),
+    Q(':', ':'), Q('::', '::'), Q('->', '->'), Q('.', '.'), Q(',', ','), Q('#', '#'), Q('_', '_'), Q('\\', '\\'),
+  ] },
+  io: { label: 'I/O', chip: true, items: [
+    Q('cin >>', 'cin >> '), Q('cout <<', 'cout << '), Q('>>', ' >> '), Q('<<', ' << '),
+    Q('"\\n"', '"\\n"'), Q("' '", "' '"), Q('endl', 'endl'), Q('cerr <<', 'cerr << '),
+    Q('getline', 'getline(cin, )', -1), Q('printf', 'printf("")', -2), Q('scanf', 'scanf("")', -2), Q('setprecision', 'fixed << setprecision()', -1),
+  ] },
+  code: { label: 'for', chip: true, items: [
+    Q('for', 'for (int i = 0; i < n; i++) {\n\t\n}', -2), Q('for auto', 'for (auto &x : ) {\n\t\n}', -9),
+    Q('while', 'while () {\n\t\n}', -6), Q('if', 'if () {\n\t\n}', -6), Q('else', 'else {\n\t\n}', -2), Q('else if', 'else if () {\n\t\n}', -6),
+    Q('return', 'return '), Q('break', 'break;'), Q('continue', 'continue;'),
+    Q('vector<', 'vector<>', -1), Q('pair<', 'pair<>', -1), Q('map<', 'map<>', -1), Q('set<', 'set<>', -1),
+    Q('sort', 'sort(.begin(), .end());', -17), Q('.size()', '.size()'), Q('.push_back', '.push_back()', -1),
+    Q('.begin,.end', '.begin(), .end()'), Q('.first', '.first'), Q('.second', '.second'), Q('auto', 'auto '), Q('long long', 'long long '),
+  ] },
+  ed: { label: '✎', sticky: true, items: [
+    ['⇥', null, 0, (v) => v.dispatch(v.state.replaceSelection(indentStr()))], ['↶', null, 0, (v) => undo(v)], ['↷', null, 0, (v) => redo(v)],
+    ['//', null, 0, (v) => toggleComment(v)], ['⧉', null, 0, (v) => copyLineDown(v)], ['⌫ line', null, 0, (v) => deleteLine(v)],
+    ['▢', null, 0, (v) => selectLine(v)], ['↑', null, 0, (v) => moveLineUp(v)], ['↓', null, 0, (v) => moveLineDown(v)],
+  ] },
+};
+const QUICK = [Q(';', ';'), Q('{}', '{}', -1), Q('()', '()', -1), Q('<<', ' << ')];
+let keyPage = 'home';
+let keyboardH = 0;
+
 const buzz = () => { if (opts.haptics) post({ t: 'haptic' }); };
 function insertText(text, back = 0) {
   const sel = view.state.selection.main;
   const line = view.state.doc.lineAt(sel.from);
   const lead = (line.text.match(/^\s*/) || [''])[0];
   const ins = text.replace(/\t/g, indentStr()).replace(/\n/g, '\n' + lead);
-  view.dispatch({ changes: { from: sel.from, to: sel.to, insert: ins }, selection: { anchor: sel.from + ins.length + back } });
+  // caret offsets were written for 4-space indents; adjust if the user picked 2
+  const fix = back < 0 && text.includes('\t') ? 0 : 0;
+  view.dispatch({ changes: { from: sel.from, to: sel.to, insert: ins }, selection: { anchor: sel.from + ins.length + back + fix } });
 }
-function buildKeyRow() {
+
+// A press counts only if it is released on the same key without the finger moving (> 10px = a scroll/drag).
+function bindPress(btn, fn) {
+  let down = false, sx = 0, sy = 0;
+  btn.addEventListener('pointerdown', (e) => { e.preventDefault(); down = true; sx = e.clientX; sy = e.clientY; btn.classList.add('down'); });
+  btn.addEventListener('pointermove', (e) => { if (down && Math.hypot(e.clientX - sx, e.clientY - sy) > 10) { down = false; btn.classList.remove('down'); } });
+  btn.addEventListener('pointerup', () => { const fire = down; down = false; btn.classList.remove('down'); if (fire) fn(); });
+  const cancel = () => { down = false; btn.classList.remove('down'); };
+  btn.addEventListener('pointercancel', cancel);
+  btn.addEventListener('pointerleave', cancel);
+  btn.addEventListener('contextmenu', (e) => e.preventDefault());
+}
+
+function applyKeyLayout() {
+  const row = document.getElementById('keys'), ed = document.getElementById('editor');
+  const showing = keyboardH > 40;
+  row.style.bottom = keyboardH + 'px';
+  row.classList.toggle('up', showing);
+  ed.style.bottom = showing ? (keyboardH + row.offsetHeight) + 'px' : '0px';
+}
+
+function renderKeys() {
   const row = document.getElementById('keys');
   row.innerHTML = '';
-  const mk = (label, fn, cls = '') => {
-    const b = document.createElement('button'); b.textContent = label; b.className = cls;
-    b.addEventListener('pointerdown', (e) => { e.preventDefault(); buzz(); fn(); });
-    row.append(b);
-  };
-  const sep = () => { const d = document.createElement('i'); row.append(d); };
-  mk('⇥', () => view.dispatch(view.state.replaceSelection(indentStr())), 'wide');
-  mk('↶', () => undo(view), 'wide'); mk('↷', () => redo(view), 'wide');
-  for (const k of KEYS) mk(k, () => {
-    const pair = { '{': '{}', '(': '()', '[': '[]', '"': '""', "'": "''" }[k];
-    if (pair && opts.autoClose) insertText(pair, -1); else insertText(k);
-  });
-  sep();
-  mk('//', () => toggleComment(view), 'wide act');
-  mk('⧉', () => copyLineDown(view), 'wide act');
-  mk('⌫ line', () => deleteLine(view), 'wide act');
-  mk('▢', () => selectLine(view), 'wide act');
-  mk('↑', () => moveLineUp(view), 'wide act');
-  mk('↓', () => moveLineDown(view), 'wide act');
-  if (opts.chips) { sep(); for (const [l, t, b] of CHIPS) mk(l, () => insertText(t, b), 'chip'); }
+  row.className = (keyboardH > 40 ? 'up ' : '') + (keyPage === 'home' ? 'home' : 'page');
+  const add = (label, cls, fn) => { const b = document.createElement('button'); b.textContent = label; if (cls) b.className = cls; bindPress(b, fn); row.append(b); return b; };
+
+  if (keyPage === 'home') {
+    for (const [l, t, b] of QUICK) add(l, '', () => { buzz(); insertText(t, b); });
+    for (const [id, pg] of Object.entries(PAGES)) {
+      if (pg.chip && !opts.chips) continue;
+      add(pg.label, 'cat', () => { buzz(); keyPage = id; renderKeys(); });
+    }
+  } else {
+    const pg = PAGES[keyPage];
+    add('‹', 'back', () => { buzz(); keyPage = 'home'; renderKeys(); });
+    for (const [l, t, b, act] of pg.items) {
+      const long = l.length > 3;
+      add(l, long ? 'long' : '', () => {
+        buzz();
+        if (act) act(view); else insertText(t, b);
+        if (!pg.sticky) { keyPage = 'home'; renderKeys(); }
+      });
+    }
+  }
+  applyKeyLayout();
 }
+function buildKeyRow() { keyPage = 'home'; renderKeys(); }
 
 // ---------- public API (called from Swift via evaluateJavaScript) ----------
 window.cf = {
@@ -197,9 +253,9 @@ window.cf = {
   themes: () => Object.keys(THEMES),
   // Swift reports how many px of the web view the keyboard covers.
   setKeyboard(h) {
-    const keys = document.getElementById('keys'), ed = document.getElementById('editor');
-    keys.style.bottom = h + 'px'; keys.classList.toggle('up', h > 40);
-    ed.style.bottom = (h > 40 ? h + 50 : 0) + 'px';
+    keyboardH = h;
+    if (h <= 40) keyPage = 'home';
+    renderKeys();
     if (h > 40 && view) view.dispatch({ effects: EditorView.scrollIntoView(view.state.selection.main.head, { y: 'nearest', yMargin: 24 }) });
   },
   setOptions(o) {

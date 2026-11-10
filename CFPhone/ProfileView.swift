@@ -114,7 +114,10 @@ struct ProfileTab: View {
             .overlay { if store.loading && store.user == nil && !settings.handle.isEmpty { ProgressView() } }
             .sheet(isPresented: $showSettings) { SettingsTab() }
         }
-        .task(id: settings.handle) { await store.load(handle: settings.handle) }
+        .task(id: settings.handle) {
+            await store.load(handle: settings.handle)
+            app.noteSolved(store.stats.solvedIDs)
+        }
     }
 
     private var emptyState: some View {
@@ -130,10 +133,8 @@ struct ProfileTab: View {
 
     private var header: some View {
         HStack(spacing: 14) {
-            AsyncImage(url: store.user.flatMap { URL(string: ($0.titlePhoto ?? $0.avatar ?? "").replacingOccurrences(of: "http://", with: "https://")) }) { img in
-                img.resizable().scaledToFill()
-            } placeholder: { Color.secondary.opacity(0.2) }
-            .frame(width: 72, height: 72).clipShape(RoundedRectangle(cornerRadius: 14))
+            AvatarView(urls: [store.user?.titlePhoto, store.user?.avatar].compactMap { $0 },
+                       handle: store.user?.handle ?? settings.handle, tint: cfRankColor(store.user?.rating))
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(store.user?.rank?.capitalized ?? "—").font(.caption.weight(.semibold)).foregroundColor(cfRankColor(store.user?.rating))
@@ -302,9 +303,15 @@ struct AnalyticsView: View {
                     .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
                 if !stats.byRating.isEmpty {
                     chartCard("Solved by problem rating") {
-                        Chart(stats.byRating) { b in
-                            BarMark(x: .value("Rating", b.label), y: .value("Solved", b.count)).foregroundStyle(cfRankColor(b.rating))
-                        }.frame(height: 190)
+                        // wide enough that every bar keeps room for its number; scrolls sideways when there are many ratings
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            Chart(stats.byRating) { b in
+                                BarMark(x: .value("Rating", b.label), y: .value("Solved", b.count)).foregroundStyle(cfRankColor(b.rating))
+                                    .annotation(position: .top, spacing: 2) { Text("\(b.count)").font(.caption2.weight(.semibold)).foregroundStyle(.primary) }
+                            }
+                            .chartYAxis(.hidden)
+                            .frame(width: max(CGFloat(stats.byRating.count) * 38, 300), height: 200)
+                        }
                     }
                 }
                 if !stats.byTag.isEmpty {
@@ -319,7 +326,10 @@ struct AnalyticsView: View {
                     chartCard("Solved by problem letter") {
                         Chart(stats.byLetter) { b in
                             BarMark(x: .value("Letter", b.label), y: .value("Solved", b.count)).foregroundStyle(Color.teal)
-                        }.frame(height: 150)
+                                .annotation(position: .top, spacing: 2) { Text("\(b.count)").font(.caption2.weight(.semibold)).foregroundStyle(.primary) }
+                        }
+                        .chartYAxis(.hidden)
+                        .frame(height: 160)
                     }
                 }
                 if !stats.verdicts.isEmpty { listCard("Verdicts", stats.verdicts, total: stats.totalSubmissions) }
@@ -395,6 +405,65 @@ struct AnalyticsView: View {
                     }
                 }
             }.card()
+        }
+    }
+}
+
+// MARK: - Avatar
+
+/// Codeforces profile picture. The API often returns "//userpic.codeforces.org/…" (no scheme) which AsyncImage can't load,
+/// and the image host expects browser-like headers, so we fetch it ourselves, cache it, and fall back to an initial.
+struct AvatarView: View {
+    let urls: [String]
+    let handle: String
+    let tint: Color
+    @State private var image: UIImage?
+
+    var body: some View {
+        Group {
+            if let image {
+                Image(uiImage: image).resizable().scaledToFill()
+            } else {
+                ZStack {
+                    tint.opacity(0.22)
+                    Text(String(handle.prefix(1)).uppercased()).font(.system(size: 32, weight: .bold)).foregroundColor(tint)
+                }
+            }
+        }
+        .frame(width: 72, height: 72)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .task(id: urls.joined(separator: "|") + handle) { await load() }
+    }
+
+    private func normalized(_ s: String) -> URL? {
+        var t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        if t.isEmpty { return nil }
+        if t.hasPrefix("//") { t = "https:" + t }
+        if t.hasPrefix("http://") { t = "https://" + t.dropFirst(7) }
+        return URL(string: t)
+    }
+
+    private var cacheFile: URL {
+        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("cfphone", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("avatar-\(handle.lowercased()).img")
+    }
+
+    private func load() async {
+        if image == nil, let d = try? Data(contentsOf: cacheFile), let img = UIImage(data: d) { image = img }
+        for s in urls {
+            guard let url = normalized(s) else { continue }
+            var req = URLRequest(url: url)
+            req.timeoutInterval = 20
+            req.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1", forHTTPHeaderField: "User-Agent")
+            req.setValue("https://codeforces.com/", forHTTPHeaderField: "Referer")
+            guard let (data, resp) = try? await URLSession.shared.data(for: req),
+                  (resp as? HTTPURLResponse)?.statusCode == 200, let img = UIImage(data: data) else { continue }
+            // skip Codeforces' grey "no avatar" placeholders if a real picture is still available
+            if url.absoluteString.contains("no-title") || url.absoluteString.contains("no-avatar"), urls.count > 1, s == urls.first { continue }
+            image = img
+            try? data.write(to: cacheFile)
+            return
         }
     }
 }

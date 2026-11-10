@@ -55,6 +55,11 @@ struct SubmissionDetailSheet: View {
                         Text("Still being judged — this updates on the Submissions tab.").foregroundStyle(.secondary)
                     }
 
+                    if failed, detail == nil, let url = pageURL {
+                        Text("Test details need the in-app Codeforces login (Profile ▸ ⚙︎ ▸ Log in). You can also view this submission in your browser.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                        Link(destination: url) { Label("Open submission in browser", systemImage: "safari") }.buttonStyle(.bordered)
+                    }
                     if needsBrowser {
                         Text("Codeforces wants a check first. Finish it below, then reopen this screen.").font(.footnote).foregroundStyle(.orange)
                     }
@@ -67,9 +72,19 @@ struct SubmissionDetailSheet: View {
             }
             .navigationTitle("Submission")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } }
+                ToolbarItem(placement: .primaryAction) {
+                    if let url = pageURL { Link(destination: url) { Label("Open in browser", systemImage: "safari") } }
+                }
+            }
         }
         .task { await fetch() }
+    }
+
+    private var pageURL: URL? {
+        guard let cid = sub.contestId ?? sub.problem.contestId else { return nil }
+        return URL(string: "https://codeforces.com/contest/\(cid)/submission/\(sub.id)")
     }
 
     private var problemInApp: Problem? { app.problems.first { $0.id == "\(sub.problem.contestId ?? 0)\(sub.problem.index)" } }

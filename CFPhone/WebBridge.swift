@@ -176,7 +176,7 @@ final class ReaderHost: NSObject, ObservableObject, WKScriptMessageHandler, WKNa
         return s
     }
 
-    func render(_ p: Problem?) {
+    func render(_ p: Problem?, hideTags: Bool = false, hideRating: Bool = false) {
         guard let p = p, let html = p.statementHTML else { run("window.cfReader.render(null)"); return }
         // The reader shows the original samples; split-out cases carry a label and are test-tab only.
         let samples = p.tests.filter { $0.isSample && ($0.isCombined == true || $0.label == nil) }
@@ -190,9 +190,14 @@ final class ReaderHost: NSObject, ObservableObject, WKScriptMessageHandler, WKNa
         if let io = p.ioMode { payload["input"] = io; payload["output"] = io.replacingOccurrences(of: "input", with: "output") }
         if let t = p.tags { payload["tags"] = t }
         if let r = p.rating { payload["rating"] = r }
+        payload["hideTags"] = hideTags
+        payload["hideRating"] = hideRating
         run("window.cfReader.render(\(json(payload)))")
     }
 
+    func setPrefs(highlight: Bool, sentences: Bool, constraints: Bool, serif: Bool) {
+        run("window.cfReader.setPrefs({highlight: \(highlight), sentences: \(sentences), constraints: \(constraints), serif: \(serif)})")
+    }
     func setTheme(_ name: String) { run("window.cfReader.setTheme(\(json(name)))") }
     func setFontSize(_ px: Double) { run("window.cfReader.setFontSize(\(px))") }
 }

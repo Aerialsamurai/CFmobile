@@ -28,8 +28,98 @@ function sampleBlock(title, text) {
   return wrap;
 }
 
-function render(p) {
+let prefs = { highlight: true, sentences: true, constraints: true, serif: false };
+let last = null;
+
+// ---- reading aids -------------------------------------------------------------------------------------------
+// Words worth catching the eye on a small screen. goal = what to compute; cond = condition that changes the answer.
+const GOAL = '(?:print|output|find|determine|calculate|count|construct|minimi[sz]e|maximi[sz]e|minimum|maximum|smallest|largest|lexicographically|shortest|longest|number of ways)';
+const COND = '(?:exactly|at least|at most|distinct|different|pairwise|modulo|it is guaranteed|guaranteed|does not exceed|over all test cases|multiple answers|any of them|any valid|otherwise|if there (?:is|are) no|-1)';
+const KEY_RE = new RegExp('\\b(' + GOAL + ')\\b|\\b(' + COND + ')(?![\\w])', 'gi');
+
+function walkText(root, skip, fn) {
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(n) {
+      if (!n.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+      for (let e = n.parentElement; e && e !== root; e = e.parentElement) if (skip(e)) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    },
+  });
+  const nodes = []; while (w.nextNode()) nodes.push(w.currentNode);
+  nodes.forEach(fn);
+}
+const isMathy = (e) => e.matches('.katex, .katex-display, pre, code, .tex-span, .tex-formula, script, style, button, .sample-pre');
+
+// Never highlight inside our own UI (header chips, headings, example blocks).
+const isChrome = (e) => isMathy(e) || e.matches('header, h1, .limits, .samples, .sample, .section-title, .chip, .tags, .meta');
+function highlightKeywords(root) {
+  walkText(root, isChrome, (n) => {
+    const text = n.nodeValue;
+    KEY_RE.lastIndex = 0;
+    if (!KEY_RE.test(text)) return;
+    KEY_RE.lastIndex = 0;
+    const frag = document.createDocumentFragment();
+    let at = 0, m;
+    while ((m = KEY_RE.exec(text))) {
+      if (m.index > at) frag.append(text.slice(at, m.index));
+      frag.append(el('b', m[1] ? 'k-goal' : 'k-cond', m[0]));
+      at = m.index + m[0].length;
+    }
+    frag.append(text.slice(at));
+    n.replaceWith(frag);
+  });
+}
+
+// One sentence per line in the Input / Output sections (they are dense paragraphs on a phone).
+const ABBR = /(?:e\.g|i\.e|etc|vs|cf|no|fig)$/i;
+function breakSentences(root) {
+  root.querySelectorAll('.input-specification, .output-specification').forEach((sec) => {
+    walkText(sec, isMathy, (n) => {
+      const text = n.nodeValue;
+      const re = /([.!?])\s+(?=[A-Z])/g;
+      let m, at = 0, any = false;
+      const frag = document.createDocumentFragment();
+      while ((m = re.exec(text))) {
+        if (ABBR.test(text.slice(Math.max(0, m.index - 4), m.index))) continue;
+        frag.append(text.slice(at, m.index + 1), el('br', 'sbr'));
+        at = m.index + m[0].length; any = true;
+      }
+      if (!any) return;
+      frag.append(text.slice(at));
+      n.replaceWith(frag);
+    });
+  });
+}
+
+// "Limits" chips: every inequality found in $$$...$$$ of the Input section, rendered with KaTeX.
+function limitChips(root) {
+  const spec = root.querySelector('.input-specification');
+  if (!spec) return null;
+  const seen = new Set(), out = [];
+  const src = spec.textContent;
+  const re = /\$\$\$(.+?)\$\$\$/gs;
+  let m;
+  while ((m = re.exec(src))) {
+    const tex = m[1].trim();
+    if (!/\\le|\\leq|\\ge|\\geq|\\lt|\\gt|[<>]/.test(tex) || tex.length > 70 || seen.has(tex)) continue;
+    seen.add(tex);
+    const chip = el('span', 'limit');
+    try { chip.innerHTML = katex.renderToString(tex, { throwOnError: false }); } catch { chip.textContent = tex; }
+    out.push(chip);
+    if (out.length >= 10) break;
+  }
+  if (!out.length) return null;
+  const box = el('div', 'limits');
+  box.append(el('div', 'limits-title', 'Limits'));
+  const row = el('div', 'limits-row'); out.forEach((c) => row.append(c));
+  box.append(row);
+  return box;
+}
+
+function render(p, keepScroll = 0) {
+  last = p;
   const root = $('doc');
+  document.documentElement.classList.toggle('serif', !!prefs.serif);
   root.innerHTML = '';
   if (!p || !p.html) {
     const e = el('div', 'empty');
@@ -44,15 +134,32 @@ function render(p) {
     if (v) { const c = el('span', 'chip'); c.append(el('b', '', k), document.createTextNode(' ' + v)); meta.append(c); }
   }
   head.append(meta);
-  if ((p.tags && p.tags.length) || p.rating) {
+  // Tags / rating can spoil a problem. When hidden, show a chip the reader can tap to peek on purpose.
+  const hasTags = !!(p.tags && p.tags.length), hasRating = !!p.rating;
+  if (hasTags || hasRating) {
     const t = el('div', 'tags');
-    if (p.rating) t.append(el('span', 'tag rating', '★ ' + p.rating));
-    (p.tags || []).forEach((x) => t.append(el('span', 'tag', x)));
+    const anyHidden = (hasTags && p.hideTags) || (hasRating && p.hideRating);
+    const what = hasTags && p.hideTags && hasRating && p.hideRating ? 'Tags & rating' : (hasTags && p.hideTags ? 'Tags' : 'Rating');
+    let revealed = false;
+    const draw = () => {
+      t.innerHTML = '';
+      if (hasRating && (!p.hideRating || revealed)) t.append(el('span', 'tag rating', '★ ' + p.rating));
+      if (hasTags && (!p.hideTags || revealed)) (p.tags || []).forEach((x) => t.append(el('span', 'tag', x)));
+      if (anyHidden && !revealed) {
+        const b = el('button', 'tag peek', what + ' hidden · tap to reveal');
+        b.onclick = () => { revealed = true; draw(); };
+        t.append(b);
+      }
+    };
+    draw();
     head.append(t);
   }
   const body = el('article', 'statement');
   body.innerHTML = clean(p.html);
-  root.append(head, body);
+  root.append(head);
+  const limits = prefs.constraints ? limitChips(body) : null;   // read the raw TeX before KaTeX rewrites it
+  if (limits) root.append(limits);
+  root.append(body);
 
   if (p.samples && p.samples.length) {
     const sec = el('section', 'samples');
@@ -74,11 +181,14 @@ function render(p) {
       throwOnError: false, ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
     });
   } catch (e) { /* leave raw TeX visible */ }
-  window.scrollTo(0, 0);
+  if (prefs.sentences) breakSentences(root);
+  if (prefs.highlight) highlightKeywords(root);
+  window.scrollTo(0, keepScroll);
 }
 
 window.cfReader = {
-  render,
+  render: (p) => render(p, 0),
+  setPrefs(o) { prefs = Object.assign(prefs, o); if (last) render(last, window.scrollY); },
   setTheme: (n) => applyTheme(n),
   setFontSize: (px) => document.documentElement.style.setProperty('--rfs', px + 'px'),
 };

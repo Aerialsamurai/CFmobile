@@ -29,6 +29,12 @@ const srv = http.createServer((q, r) => {
   await rd.waitForTimeout(600);
   await rd.screenshot({ path: path.join(shots, 'reader.png') });
   const katexCount = await rd.evaluate(() => document.querySelectorAll('.katex').length);
+  const aids = await rd.evaluate(() => ({ limits: [...document.querySelectorAll('.limit')].map((e) => e.innerText.replace(/\s+/g, ' ')), goal: [...document.querySelectorAll('.k-goal')].map((e) => e.innerText), cond: [...document.querySelectorAll('.k-cond')].map((e) => e.innerText), breaks: document.querySelectorAll('br.sbr').length }));
+  console.log('aids on:', JSON.stringify(aids));
+  await rd.screenshot({ path: path.join(shots, 'reader-aids.png') });
+  await rd.evaluate(() => window.cfReader.setPrefs({ highlight: false, sentences: false, constraints: false }));
+  const off = await rd.evaluate(() => ({ limits: document.querySelectorAll('.limit').length, marks: document.querySelectorAll('.k-goal,.k-cond').length, breaks: document.querySelectorAll('br.sbr').length }));
+  console.log('aids off:', JSON.stringify(off));
   console.log('katex nodes:', katexCount, 'errors:', errs);
   await b.close(); srv.close();
 })();

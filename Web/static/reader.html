@@ -14,6 +14,7 @@ h1 { font-size: 1.45em; line-height: 1.25; margin: 4px 0 10px; letter-spacing: -
 .chip b { color: var(--gutterFg); font-weight: 600; margin-right: 3px; text-transform: uppercase; letter-spacing: .04em; font-size: .9em; }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
 .tag { font-size: .72em; padding: 2px 9px; border-radius: 6px; background: var(--bar); border: 1px solid var(--border); color: var(--gutterFg); }
+.tag.peek { font: inherit; font-size: .72em; background: transparent; border: 1px dashed var(--accent); color: var(--accent); }
 .tag.rating { color: var(--warn); border-color: var(--warn); }
 .statement { margin-top: 14px; }
 .statement > div > p:first-child, .statement p { margin: 0 0 .85em; }
@@ -45,6 +46,19 @@ h1 { font-size: 1.45em; line-height: 1.25; margin: 4px 0 10px; letter-spacing: -
 .note p { margin: 0 0 .85em; }
 .empty { text-align: center; padding: 18vh 24px 0; color: var(--gutterFg); }
 .empty .big { font-size: 48px; margin-bottom: 8px; } .empty .sub { font-size: .85em; margin-top: 8px; line-height: 1.5; }
+.statement .katex { color: var(--vr); }
+.statement .katex-display .katex { color: var(--fg); }
+.k-goal { font-weight: 700; }
+.k-cond { font-weight: 600; border-bottom: 2px solid var(--warn); }
+html.serif body { font-family: ui-serif, "New York", Georgia, "Times New Roman", serif; }
+body { max-width: 720px; margin: 0 auto; }
+br.sbr { display: block; content: ""; margin-top: .45em; }
+.limits { margin: 14px 0 2px; padding: 10px 12px; background: var(--bar); border: 1px solid var(--border); border-radius: 10px; }
+.limits-title { font-size: .72em; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gutterFg); margin-bottom: 6px; }
+.limits-row { display: flex; flex-wrap: wrap; gap: 6px 8px; }
+.limit { background: var(--line); border-radius: 8px; padding: 2px 9px; font-size: .92em; white-space: nowrap; }
+.limit .katex { color: var(--vr); font-size: 1em; }
+.input-specification, .output-specification, .note { border-top: 1px solid var(--border); margin-top: 1.2em; }
 </style></head>
 <body><div id="doc"></div>
 <script type="module" src="reader.js"></script>

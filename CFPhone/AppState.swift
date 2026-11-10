@@ -47,6 +47,11 @@ final class AppState: ObservableObject {
     // cross-tab requests
     @Published var selectedTab = 0
     @Published var submissionsNeedRefresh = 0
+    /// Problems the user has solved (from their submissions); used to reveal hidden tags/ratings.
+    @Published var solvedIDs: Set<String> = [] { didSet { renderReader() } }
+    @Published var registeredContests: Set<Int> = []
+    @Published var pendingRegistration: CFContest?   // opened in the browser; asks "did you register?" on return
+    @Published var pendingSubmit = false             // opened the submit page in the browser
     @Published var liveContestActive = false   // set by the Contests tab; used to keep prompts out of contests
 
     private var server: LocalServer?
@@ -56,6 +61,7 @@ final class AppState: ObservableObject {
 
     init(settings: Settings) {
         self.settings = settings
+        registeredContests = Set(settings.registeredLocal)
         loadProblems()
     }
 
@@ -96,6 +102,7 @@ final class AppState: ObservableObject {
             reader = rd
             applyAppearance()
             openProblem(currentID)
+            Task { await refreshSolved() }
         } catch {
             bootError = "Could not start local server: \(error.localizedDescription)"
         }
@@ -149,7 +156,7 @@ final class AppState: ObservableObject {
         results = [:]
         diagnostics = []
         editor?.setCode(text)
-        reader?.render(problems.first { $0.id == id })
+        renderReader()
         if !FileManager.default.fileExists(atPath: codeFile(id).path) { try? text.write(to: codeFile(id), atomically: true, encoding: .utf8) }
     }
 
@@ -283,12 +290,39 @@ final class AppState: ObservableObject {
 
     // MARK: - Theme / font push
 
+    /// Shows the current problem in the reader, hiding tags / rating if the user asked to (unless already solved).
+    func renderReader() {
+        guard let reader = reader else { return }
+        let p = problems.first { $0.id == currentID }
+        let solved = settings.revealWhenSolved && solvedIDs.contains(currentID)
+        reader.render(p, hideTags: settings.hideTags && !solved, hideRating: settings.hideRating && !solved)
+    }
+
+    func noteSolved(_ ids: Set<String>) {
+        if !ids.isSubset(of: solvedIDs) { solvedIDs.formUnion(ids) }
+    }
+
+    /// One quiet request at launch so tags/ratings of problems you already solved are not hidden.
+    func refreshSolved() async {
+        guard !settings.handle.isEmpty,
+              let subs = try? await CFAPI.allSubmissions(handle: settings.handle) else { return }
+        noteSolved(Set(subs.filter { $0.verdict == "OK" }.map { "\($0.problem.contestId ?? 0)\($0.problem.index)" }))
+    }
+
+    func markRegistered(_ id: Int, _ on: Bool = true) {
+        if on { registeredContests.insert(id) } else { registeredContests.remove(id) }
+        settings.registeredLocal = Array(registeredContests)
+    }
+
     func applyAppearance() {
         editor?.setTheme(settings.theme)
         editor?.setFontSize(settings.fontSize)
         editor?.setOptions(indent: settings.indentSize, autoClose: settings.autoClose, chips: settings.snippetRow, haptics: settings.haptics)
         reader?.setTheme(settings.theme)
         reader?.setFontSize(settings.readerFontSize)
+        reader?.setPrefs(highlight: settings.readerHighlight, sentences: settings.readerSentences,
+                         constraints: settings.readerConstraints, serif: settings.readerSerif)
+        renderReader()
     }
 
     // MARK: - Compile / run

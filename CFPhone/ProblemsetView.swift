@@ -155,19 +155,26 @@ struct ProblemsetView: View {
         .sheet(item: $target, onDismiss: { if app.currentID == pickedID { onPicked() } }) { p in
             ImportProblemSheet(contestId: p.contestId, index: p.index, tags: p.tags, rating: p.rating)
         }
-        .task { await store.load(handle: settings.handle) }
+        .task {
+            await store.load(handle: settings.handle)
+            app.noteSolved(store.solved)
+        }
     }
 
     private func row(_ p: PSProblem) -> some View {
-        HStack(alignment: .top, spacing: 10) {
+        // spoiler settings: hide rating / tags unless you've solved it (and chose to reveal solved ones)
+        let solved = settings.revealWhenSolved && store.solved.contains(p.id)
+        let showRating = !settings.hideRating || solved
+        let showTags = !settings.hideTags || solved
+        return HStack(alignment: .top, spacing: 10) {
             statusIcon(p).frame(width: 22).padding(.top, 2)
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text("\(p.id) · \(p.name)").font(.headline).foregroundStyle(.primary).lineLimit(2)
                     Spacer(minLength: 4)
-                    if let r = p.rating { Text("\(r)").font(.subheadline.weight(.semibold)).foregroundColor(ratingColor(r)) }
+                    if showRating, let r = p.rating { Text("\(r)").font(.subheadline.weight(.semibold)).foregroundColor(ratingColor(r)) }
                 }
-                if !p.tags.isEmpty {
+                if showTags && !p.tags.isEmpty {
                     Text(p.tags.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary).lineLimit(2)
                 }
                 Text("\(p.solved) solved").font(.caption2).foregroundStyle(.tertiary)

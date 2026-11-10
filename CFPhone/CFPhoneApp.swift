@@ -25,6 +25,7 @@ struct CFPhoneApp: App {
 struct RootView: View {
     @EnvironmentObject var app: AppState
     @EnvironmentObject var settings: Settings
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         Group {
@@ -54,6 +55,21 @@ struct RootView: View {
         .onChange(of: settings.theme) { _ in app.applyAppearance() }
         .onChange(of: settings.fontSize) { _ in app.applyAppearance() }
         .onChange(of: settings.readerFontSize) { _ in app.applyAppearance() }
+        .onChange(of: settings.readerHighlight) { _ in app.applyAppearance() }
+        .onChange(of: settings.readerSentences) { _ in app.applyAppearance() }
+        .onChange(of: settings.readerConstraints) { _ in app.applyAppearance() }
+        .onChange(of: settings.readerSerif) { _ in app.applyAppearance() }
+        .onChange(of: scenePhase) { phase in
+            // came back from the browser after submitting: refresh and jump to the verdict
+            if phase == .active && app.pendingSubmit {
+                app.pendingSubmit = false
+                app.submissionsNeedRefresh += 1
+                app.selectedTab = 2
+            }
+        }
+        .onChange(of: settings.hideTags) { _ in app.renderReader() }
+        .onChange(of: settings.hideRating) { _ in app.renderReader() }
+        .onChange(of: settings.revealWhenSolved) { _ in app.renderReader() }
         .onChange(of: settings.indentSize) { _ in app.applyAppearance() }
         .onChange(of: settings.autoClose) { _ in app.applyAppearance() }
         .onChange(of: settings.snippetRow) { _ in app.applyAppearance() }

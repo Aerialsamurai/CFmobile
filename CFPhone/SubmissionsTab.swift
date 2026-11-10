@@ -44,6 +44,7 @@ struct SubmissionsTab: View {
             let justAccepted = fresh.contains { knownPending.contains($0.id) && $0.verdict == "OK" }
             knownPending = Set(fresh.filter { $0.isPending }.map { $0.id })
             items = fresh
+            app.noteSolved(Set(fresh.filter { $0.verdict == "OK" }.map { "\($0.problem.contestId ?? 0)\($0.problem.index)" }))
             error = ""
             if justAccepted && !settings.supportPromptDone && !app.liveContestActive
                 && fresh.filter({ $0.verdict == "OK" }).count >= 5 {

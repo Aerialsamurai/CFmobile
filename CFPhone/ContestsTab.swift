@@ -8,6 +8,9 @@ struct ContestsTab: View {
     @State private var loading = false
     @State private var registering: CFContest?
     @State private var live: CFContest?
+    @State private var confirmRegistered = false
+    @StateObject private var checker = WebFlow()      // invisible: asks codeforces.com which contests you're registered for
+    @Environment(\.scenePhase) private var scenePhase
 
     var running: [CFContest] { contests.filter { $0.phase == "CODING" } }
     var upcoming: [CFContest] { contests.filter { $0.phase == "BEFORE" } }
@@ -30,7 +33,12 @@ struct ContestsTab: View {
                     }
                 }
                 Section("Upcoming") {
-                    ForEach(upcoming) { c in ContestRow(c: c, onRegister: { registering = c }) }
+                    ForEach(upcoming) { c in
+                        ContestRow(c: c, registered: app.registeredContests.contains(c.id),
+                                   onRegister: { register(c, inApp: !settings.useDefaultBrowser) },
+                                   onRegisterOther: { register(c, inApp: settings.useDefaultBrowser) },
+                                   onUnmark: { app.markRegistered(c.id, false) })
+                    }
                 }
             }
             .navigationTitle("Contests")
@@ -38,11 +46,55 @@ struct ContestsTab: View {
             .overlay { if loading && contests.isEmpty { ProgressView() } }
             .sheet(item: $registering) { RegisterSheet(contest: $0) }
             .sheet(item: $live) { LiveContestSheet(contest: $0) }
+            .background(FlowWebView(flow: checker).frame(width: 1, height: 1).opacity(0.01).allowsHitTesting(false))
+            .alert("Did you register?", isPresented: $confirmRegistered, presenting: app.pendingRegistration) { c in
+                Button("Yes, I registered") { app.markRegistered(c.id); app.pendingRegistration = nil }
+                Button("Not yet", role: .cancel) { app.pendingRegistration = nil }
+            } message: { c in
+                Text("Mark \(c.name) as registered so it shows here.")
+            }
         }
-        .task { await load() }
+        .task { await load(); await checkRegistrations() }
+        .onChange(of: scenePhase) { phase in
+            if phase == .active, app.pendingRegistration != nil { confirmRegistered = true }
+        }
+        .onChange(of: registering?.id) { id in
+            // the in-app registration sheet was closed: ask Codeforces whether it worked
+            if id == nil { Task { try? await Task.sleep(nanoseconds: 800_000_000); await checkRegistrations() } }
+        }
         .onChange(of: settings.notifyDay) { _ in Task { await Notifier.schedule(contests: contests, settings: settings) } }
         .onChange(of: settings.notifyQuarter) { _ in Task { await Notifier.schedule(contests: contests, settings: settings) } }
         .onChange(of: settings.muted) { _ in Task { await Notifier.schedule(contests: contests, settings: settings) } }
+    }
+
+    /// inApp = automatic form in the app's own browser; otherwise your default browser (Safari, Brave…).
+    private func register(_ c: CFContest, inApp: Bool) {
+        if inApp {
+            registering = c
+        } else {
+            app.pendingRegistration = c
+            if let url = URL(string: "https://codeforces.com/contestRegistration/\(c.id)") { UIApplication.shared.open(url) }
+        }
+    }
+
+    private struct RegisteredResult: Decodable {
+        struct Item: Decodable { let id: Int; let registered: Bool }
+        let ok: Bool
+        let loggedIn: Bool
+        let contests: [Item]
+    }
+
+    /// Works when you're logged in inside the app; otherwise the "Registered" marks you set yourself are used.
+    private func checkRegistrations() async {
+        checker.onFinish = { wv in
+            Task { @MainActor in
+                let r = try? await wv.callAsyncJavaScript(CFScripts.registeredContests, arguments: [:], in: nil, contentWorld: .page)
+                guard let str = r as? String, let d = str.data(using: .utf8),
+                      let res = try? JSONDecoder().decode(RegisteredResult.self, from: d), res.ok, res.loggedIn else { return }
+                for c in res.contests where app.registeredContests.contains(c.id) != c.registered { app.markRegistered(c.id, c.registered) }
+            }
+        }
+        if let url = URL(string: "https://codeforces.com/contests") { checker.load(url) }
     }
 
     private func load() async {
@@ -60,7 +112,10 @@ struct ContestsTab: View {
 struct ContestRow: View {
     @EnvironmentObject var settings: Settings
     let c: CFContest
+    let registered: Bool
     let onRegister: () -> Void
+    let onRegisterOther: () -> Void
+    let onUnmark: () -> Void
 
     var muted: Bool { settings.muted.contains(c.id) }
 
@@ -78,7 +133,22 @@ struct ContestRow: View {
                     Button {
                         if muted { settings.muted.removeAll { $0 == c.id } } else { settings.muted.append(c.id) }
                     } label: { Image(systemName: muted ? "bell.slash" : "bell.fill") }.buttonStyle(.borderless)
-                    Button("Register", action: onRegister).buttonStyle(.borderedProminent).controlSize(.small)
+                    if registered {
+                        Menu {
+                            Button("Mark as not registered", role: .destructive, action: onUnmark)
+                        } label: {
+                            Label("Registered", systemImage: "checkmark.circle.fill")
+                                .font(.footnote.weight(.semibold)).foregroundColor(.green)
+                                .padding(.horizontal, 10).padding(.vertical, 5)
+                                .background(Color.green.opacity(0.15)).clipShape(Capsule())
+                        }
+                    } else {
+                        Button("Register", action: onRegister)
+                            .buttonStyle(.borderedProminent).controlSize(.small)
+                            .contextMenu {
+                                Button(settings.useDefaultBrowser ? "Register inside the app" : "Register in my browser", action: onRegisterOther)
+                            }
+                    }
                 }
             }
         }.padding(.vertical, 3)
