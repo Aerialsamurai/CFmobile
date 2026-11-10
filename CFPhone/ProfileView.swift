@@ -298,6 +298,8 @@ struct AnalyticsView: View {
         ScrollView {
             VStack(spacing: 14) {
                 summary
+                Text("Charts and the unsolved list count rated problems only and are computed from your submissions the same way as the CF Analytics browser extension, so the numbers match.")
+                    .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
                 if !stats.byRating.isEmpty {
                     chartCard("Solved by problem rating") {
                         Chart(stats.byRating) { b in
@@ -306,7 +308,7 @@ struct AnalyticsView: View {
                     }
                 }
                 if !stats.byTag.isEmpty {
-                    chartCard("Solved by tag") {
+                    chartCard("Solved by tag (\(stats.byTag.count) tags)") {
                         Chart(stats.byTag) { b in
                             BarMark(x: .value("Solved", b.count), y: .value("Tag", b.label)).foregroundStyle(Color.accentColor)
                                 .annotation(position: .trailing) { Text("\(b.count)").font(.caption2).foregroundStyle(.secondary) }
@@ -335,10 +337,10 @@ struct AnalyticsView: View {
         let items: [(String, String)] = [
             ("Submissions", "\(stats.totalSubmissions)"),
             ("Solved", "\(stats.solved)"),
+            ("Rated solved", "\(stats.ratedSolved)"),
             ("Accepted rate", String(format: "%.0f%%", stats.acceptance * 100)),
             ("Avg tries / solve", stats.avgAttempts > 0 ? String(format: "%.1f", stats.avgAttempts) : "—"),
             ("Hardest solved", stats.hardest.map(String.init) ?? "—"),
-            ("Longest streak", "\(stats.longestStreak) d"),
         ]
         return LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
             ForEach(items, id: \.0) { it in
@@ -377,14 +379,14 @@ struct AnalyticsView: View {
     @ViewBuilder private var unsolvedCard: some View {
         if !stats.unsolved.isEmpty {
             VStack(alignment: .leading, spacing: 0) {
-                Text("Tried but not solved").font(.headline).padding(14)
-                ForEach(stats.unsolved.prefix(30)) { p in
+                Text("Tried but not solved (\(stats.unsolved.count))").font(.headline).padding(14)
+                ForEach(stats.unsolved.prefix(60)) { p in
                     Divider().padding(.leading, 14)
                     Button { importTarget = p } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("\(p.id) · \(p.name)").font(.subheadline).foregroundStyle(.primary).lineLimit(1)
-                                Text("\(p.attempts) failed attempt\(p.attempts == 1 ? "" : "s") · \(p.last.formatted(date: .abbreviated, time: .omitted))")
+                                Text("\(p.attempts) submission\(p.attempts == 1 ? "" : "s") · \(p.last.formatted(date: .abbreviated, time: .omitted))")
                                     .font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
