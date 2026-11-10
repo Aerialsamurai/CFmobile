@@ -33,11 +33,20 @@ enum CFAPI {
         return res
     }
 
-    /// Running + upcoming contests, soonest first.
+    /// Every (non-gym) contest: upcoming, running and finished. The screens filter and sort.
     static func contests() async throws -> [CFContest] {
-        let all: [CFContest] = try await get("contest.list", ["gym": "false"])
-        let relevant = all.filter { $0.phase == "BEFORE" || $0.phase == "CODING" }
-        return relevant.sorted { ($0.start ?? .distantFuture) < ($1.start ?? .distantFuture) }
+        try await get("contest.list", ["gym": "false"])
+    }
+
+    static func standings(contestId: Int, handles: [String]? = nil, count: Int = 100) async throws -> CFStandingsPage {
+        var q = ["contestId": String(contestId), "from": "1", "count": String(count)]
+        if let h = handles { q["handles"] = h.joined(separator: ";"); q["showUnofficial"] = "true" }
+        return try await get("contest.standings", q)
+    }
+
+    static func users(_ handles: [String]) async throws -> [CFUser] {
+        guard !handles.isEmpty else { return [] }
+        return try await get("user.info", ["handles": handles.joined(separator: ";")])
     }
 
     static func submissions(handle: String, count: Int = 40) async throws -> [CFSubmission] {

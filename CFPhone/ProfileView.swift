@@ -99,6 +99,15 @@ struct ProfileTab: View {
                             }
                             .padding(14).card()
                         }.buttonStyle(.plain)
+                        NavigationLink { FriendsView() } label: {
+                            HStack {
+                                Label("Friends", systemImage: "person.2")
+                                Spacer()
+                                Text("\(settings.friends.count)").font(.footnote).foregroundStyle(.secondary)
+                                Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.tertiary)
+                            }
+                            .padding(14).card()
+                        }.buttonStyle(.plain)
                         recentContests
                     }
                 }

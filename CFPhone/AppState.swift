@@ -52,6 +52,12 @@ final class AppState: ObservableObject {
     @Published var registeredContests: Set<Int> = []
     @Published var pendingRegistration: CFContest?   // opened in the browser; asks "did you register?" on return
     @Published var pendingSubmit = false             // opened the submit page in the browser
+    @Published var virtualRun: VirtualRun? {
+        didSet {
+            if let r = virtualRun, let d = try? JSONEncoder().encode(r) { UserDefaults.standard.set(d, forKey: "virtualRun") }
+            else { UserDefaults.standard.removeObject(forKey: "virtualRun") }
+        }
+    }
     @Published var liveContestActive = false   // set by the Contests tab; used to keep prompts out of contests
 
     private var server: LocalServer?
@@ -62,6 +68,7 @@ final class AppState: ObservableObject {
     init(settings: Settings) {
         self.settings = settings
         registeredContests = Set(settings.registeredLocal)
+        if let d = UserDefaults.standard.data(forKey: "virtualRun"), let r = try? JSONDecoder().decode(VirtualRun.self, from: d) { virtualRun = r }
         loadProblems()
     }
 

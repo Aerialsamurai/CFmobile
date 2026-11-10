@@ -187,3 +187,41 @@ struct CFRatingChange: Codable, Identifiable, Hashable {
     var date: Date { Date(timeIntervalSince1970: TimeInterval(ratingUpdateTimeSeconds)) }
     var delta: Int { newRating - oldRating }
 }
+
+// MARK: - Standings, friends, virtual contests
+
+struct CFStandingRow: Decodable, Identifiable {
+    struct Party: Decodable {
+        struct Member: Decodable { let handle: String }
+        let members: [Member]
+        let participantType: String?
+    }
+    struct PResult: Decodable {
+        let points: Double
+        let rejectedAttemptCount: Int
+        let bestSubmissionTimeSeconds: Int?
+    }
+    let party: Party
+    let rank: Int
+    let points: Double
+    let penalty: Int
+    let problemResults: [PResult]
+    var handle: String { party.members.map { $0.handle }.joined(separator: ", ") }
+    var id: String { "\(rank)-\(handle)-\(party.participantType ?? "")" }
+}
+
+struct CFStandingsPage: Decodable {
+    let problems: [CFProblem]
+    let rows: [CFStandingRow]
+}
+
+/// A practice run the app times itself ("virtual contest"): countdown + your own submissions inside the window.
+struct VirtualRun: Codable, Equatable {
+    struct Problem: Codable, Equatable { let index: String; let name: String }
+    let contestId: Int
+    let name: String
+    let start: Date
+    let durationSeconds: Int
+    let problems: [Problem]
+    var end: Date { start.addingTimeInterval(TimeInterval(durationSeconds)) }
+}

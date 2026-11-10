@@ -8,17 +8,33 @@ struct ContestsTab: View {
     @State private var loading = false
     @State private var registering: CFContest?
     @State private var live: CFContest?
+    @State private var detail: CFContest?
+    @State private var showVirtual = false
     @State private var confirmRegistered = false
     @StateObject private var checker = WebFlow()      // invisible: asks codeforces.com which contests you're registered for
     @Environment(\.scenePhase) private var scenePhase
 
     var running: [CFContest] { contests.filter { $0.phase == "CODING" } }
-    var upcoming: [CFContest] { contests.filter { $0.phase == "BEFORE" } }
+    var upcoming: [CFContest] { contests.filter { $0.phase == "BEFORE" }.sorted { ($0.start ?? .distantFuture) < ($1.start ?? .distantFuture) } }
+    var past: [CFContest] { Array(contests.filter { $0.phase == "FINISHED" }.sorted { ($0.start ?? .distantPast) > ($1.start ?? .distantPast) }.prefix(25)) }
 
     var body: some View {
         NavigationStack {
             List {
                 if !error.isEmpty { Text(error).font(.footnote).foregroundStyle(.red) }
+                if let run = app.virtualRun {
+                    Section("Virtual contest") {
+                        Button { showVirtual = true } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Label("In progress", systemImage: "timer").font(.caption.bold()).foregroundColor(.orange)
+                                Text(run.name).font(.headline).foregroundStyle(.primary)
+                                if Date() < run.end {
+                                    Text("Ends in ").font(.caption).foregroundColor(.secondary) + Text(run.end, style: .timer).font(.caption).foregroundColor(.secondary)
+                                } else { Text("Time's up — tap for your result").font(.caption).foregroundColor(.secondary) }
+                            }
+                        }
+                    }
+                }
                 if !running.isEmpty {
                     Section("Live now") {
                         ForEach(running) { c in
@@ -40,12 +56,26 @@ struct ContestsTab: View {
                                    onUnmark: { app.markRegistered(c.id, false) })
                     }
                 }
+                if !past.isEmpty {
+                    Section("Past contests") {
+                        ForEach(past) { c in
+                            Button { detail = c } label: {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(c.name).font(.subheadline).foregroundStyle(.primary).lineLimit(2)
+                                    if let st = c.start { Text(st.formatted(date: .abbreviated, time: .omitted)).font(.caption).foregroundStyle(.secondary) }
+                                }
+                            }
+                        }
+                    }
+                }
             }
             .navigationTitle("Contests")
             .refreshable { await load() }
             .overlay { if loading && contests.isEmpty { ProgressView() } }
             .sheet(item: $registering) { RegisterSheet(contest: $0) }
             .sheet(item: $live) { LiveContestSheet(contest: $0) }
+            .sheet(item: $detail) { ContestDetailSheet(contest: $0) }
+            .sheet(isPresented: $showVirtual) { if let r = app.virtualRun { VirtualContestView(run: r) } }
             .background(FlowWebView(flow: checker).frame(width: 1, height: 1).opacity(0.01).allowsHitTesting(false))
             .alert("Did you register?", isPresented: $confirmRegistered, presenting: app.pendingRegistration) { c in
                 Button("Yes, I registered") { app.markRegistered(c.id); app.pendingRegistration = nil }
@@ -173,6 +203,7 @@ struct LiveContestSheet: View {
                 if let e = contest.end {
                     Section { Text("Ends in ") + Text(e, style: .timer).bold() }
                 }
+                Section { NavigationLink { StandingsView(contest: contest) } label: { Label("Standings", systemImage: "list.number") } }
                 Section("Problems") {
                     ForEach(problems, id: \.index) { p in
                         Button { importTarget = .init(contestId: contest.id, index: p.index) } label: {

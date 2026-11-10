@@ -35,6 +35,7 @@ final class Settings: ObservableObject {
     @Published var revealWhenSolved: Bool { didSet { d.set(revealWhenSolved, forKey: "revealWhenSolved") } }
     // where Codeforces pages open: true = your default browser (Safari, Brave…), false = the in-app browser
     @Published var useDefaultBrowser: Bool { didSet { d.set(useDefaultBrowser, forKey: "useDefaultBrowser") } }
+    @Published var friends: [String] { didSet { d.set(friends, forKey: "friends") } }
     @Published var registeredLocal: [Int] { didSet { d.set(registeredLocal, forKey: "registeredLocal") } }
 
     init() {
@@ -61,6 +62,7 @@ final class Settings: ObservableObject {
         revealWhenSolved = d.object(forKey: "revealWhenSolved") as? Bool ?? true
         useDefaultBrowser = d.object(forKey: "useDefaultBrowser") as? Bool ?? true
         registeredLocal = d.array(forKey: "registeredLocal") as? [Int] ?? []
+        friends = d.array(forKey: "friends") as? [String] ?? []
     }
 
     var isDark: Bool { Self.themes.first { $0.name == theme }?.dark ?? true }
