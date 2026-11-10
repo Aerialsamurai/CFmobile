@@ -29,11 +29,19 @@ const srv = http.createServer((q, r) => {
   await rd.waitForTimeout(600);
   await rd.screenshot({ path: path.join(shots, 'reader.png') });
   const katexCount = await rd.evaluate(() => document.querySelectorAll('.katex').length);
-  const aids = await rd.evaluate(() => ({ limits: [...document.querySelectorAll('.limit')].map((e) => e.innerText.replace(/\s+/g, ' ')), goal: [...document.querySelectorAll('.k-goal')].map((e) => e.innerText), cond: [...document.querySelectorAll('.k-cond')].map((e) => e.innerText), breaks: document.querySelectorAll('br.sbr').length }));
+  // the page must follow the Codeforces order: header -> legend -> Input -> Output -> Examples -> Note
+  const order = await rd.evaluate(() => {
+    const kids = [...document.getElementById('doc').children].map((e) => e.tagName.toLowerCase() + (e.className ? '.' + e.className.split(' ')[0] : ''));
+    const st = document.querySelector('.statement');
+    const parts = [...st.querySelectorAll(':scope > div')].map((d) => d.className || 'legend');
+    return { top: kids, statement: parts, extras: document.querySelectorAll('.limits, .limit').length };
+  });
+  console.log('order:', JSON.stringify(order));
+  const aids = await rd.evaluate(() => ({ goal: [...document.querySelectorAll('.k-goal')].map((e) => e.innerText), cond: [...document.querySelectorAll('.k-cond')].map((e) => e.innerText), breaks: document.querySelectorAll('br.sbr').length }));
   console.log('aids on:', JSON.stringify(aids));
   await rd.screenshot({ path: path.join(shots, 'reader-aids.png') });
   await rd.evaluate(() => window.cfReader.setPrefs({ highlight: false, sentences: false, constraints: false }));
-  const off = await rd.evaluate(() => ({ limits: document.querySelectorAll('.limit').length, marks: document.querySelectorAll('.k-goal,.k-cond').length, breaks: document.querySelectorAll('br.sbr').length }));
+  const off = await rd.evaluate(() => ({ marks: document.querySelectorAll('.k-goal,.k-cond').length, breaks: document.querySelectorAll('br.sbr').length }));
   console.log('aids off:', JSON.stringify(off));
   console.log('katex nodes:', katexCount, 'errors:', errs);
   await b.close(); srv.close();

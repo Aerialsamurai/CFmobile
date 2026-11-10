@@ -320,8 +320,7 @@ final class AppState: ObservableObject {
         editor?.setOptions(indent: settings.indentSize, autoClose: settings.autoClose, chips: settings.snippetRow, haptics: settings.haptics)
         reader?.setTheme(settings.theme)
         reader?.setFontSize(settings.readerFontSize)
-        reader?.setPrefs(highlight: settings.readerHighlight, sentences: settings.readerSentences,
-                         constraints: settings.readerConstraints, serif: settings.readerSerif)
+        reader?.setPrefs(highlight: settings.readerHighlight, sentences: settings.readerSentences, serif: settings.readerSerif)
         renderReader()
     }
 

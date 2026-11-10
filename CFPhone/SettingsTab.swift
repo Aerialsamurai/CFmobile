@@ -36,13 +36,12 @@ struct SettingsTab: View {
                     Toggle("Hide problem rating", isOn: $settings.hideRating)
                     Toggle("Show them again once I've solved it", isOn: $settings.revealWhenSolved)
                 } header: { Text("Spoilers") } footer: {
-                    Text("Hides tags and rating on the problem page and in the problemset, so they don't give the solution away. On the problem page you can still tap \"tap to reveal\" if you're stuck.")
+                    Text("Hidden by default so they don't hint at the solution. Applies to the problem page and the problemset. On the problem page you can still tap \"tap to reveal\" if you're stuck.")
                 }
 
                 Section {
                     Toggle("Bold key words (print, minimum, exactly…)", isOn: $settings.readerHighlight)
                     Toggle("One sentence per line (Input / Output)", isOn: $settings.readerSentences)
-                    Toggle("Limits summary at the top", isOn: $settings.readerConstraints)
                     Toggle("Serif font", isOn: $settings.readerSerif)
                 } header: { Text("Reading problems") } footer: {
                     Text("Also in the Aa menu on the Problem screen.")

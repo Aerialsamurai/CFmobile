@@ -28,7 +28,7 @@ function sampleBlock(title, text) {
   return wrap;
 }
 
-let prefs = { highlight: true, sentences: true, constraints: true, serif: false };
+let prefs = { highlight: true, sentences: true, serif: false };
 let last = null;
 
 // ---- reading aids -------------------------------------------------------------------------------------------
@@ -91,31 +91,6 @@ function breakSentences(root) {
   });
 }
 
-// "Limits" chips: every inequality found in $$$...$$$ of the Input section, rendered with KaTeX.
-function limitChips(root) {
-  const spec = root.querySelector('.input-specification');
-  if (!spec) return null;
-  const seen = new Set(), out = [];
-  const src = spec.textContent;
-  const re = /\$\$\$(.+?)\$\$\$/gs;
-  let m;
-  while ((m = re.exec(src))) {
-    const tex = m[1].trim();
-    if (!/\\le|\\leq|\\ge|\\geq|\\lt|\\gt|[<>]/.test(tex) || tex.length > 70 || seen.has(tex)) continue;
-    seen.add(tex);
-    const chip = el('span', 'limit');
-    try { chip.innerHTML = katex.renderToString(tex, { throwOnError: false }); } catch { chip.textContent = tex; }
-    out.push(chip);
-    if (out.length >= 10) break;
-  }
-  if (!out.length) return null;
-  const box = el('div', 'limits');
-  box.append(el('div', 'limits-title', 'Limits'));
-  const row = el('div', 'limits-row'); out.forEach((c) => row.append(c));
-  box.append(row);
-  return box;
-}
-
 function render(p, keepScroll = 0) {
   last = p;
   const root = $('doc');
@@ -157,8 +132,6 @@ function render(p, keepScroll = 0) {
   const body = el('article', 'statement');
   body.innerHTML = clean(p.html);
   root.append(head);
-  const limits = prefs.constraints ? limitChips(body) : null;   // read the raw TeX before KaTeX rewrites it
-  if (limits) root.append(limits);
   root.append(body);
 
   if (p.samples && p.samples.length) {

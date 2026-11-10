@@ -39,7 +39,6 @@ struct EditorTab: View {
                         Menu {
                             Toggle("Bold key words", isOn: $settings.readerHighlight)
                             Toggle("One sentence per line", isOn: $settings.readerSentences)
-                            Toggle("Limits summary", isOn: $settings.readerConstraints)
                             Toggle("Serif font", isOn: $settings.readerSerif)
                             Divider()
                             Button { settings.readerFontSize = min(26, settings.readerFontSize + 1) } label: { Label("Larger text", systemImage: "plus.magnifyingglass") }

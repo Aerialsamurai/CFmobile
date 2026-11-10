@@ -57,7 +57,6 @@ struct RootView: View {
         .onChange(of: settings.readerFontSize) { _ in app.applyAppearance() }
         .onChange(of: settings.readerHighlight) { _ in app.applyAppearance() }
         .onChange(of: settings.readerSentences) { _ in app.applyAppearance() }
-        .onChange(of: settings.readerConstraints) { _ in app.applyAppearance() }
         .onChange(of: settings.readerSerif) { _ in app.applyAppearance() }
         .onChange(of: scenePhase) { phase in
             // came back from the browser after submitting: refresh and jump to the verdict

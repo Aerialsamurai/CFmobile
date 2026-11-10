@@ -28,7 +28,6 @@ final class Settings: ObservableObject {
     // problem reader aids
     @Published var readerHighlight: Bool { didSet { d.set(readerHighlight, forKey: "readerHighlight") } }
     @Published var readerSentences: Bool { didSet { d.set(readerSentences, forKey: "readerSentences") } }
-    @Published var readerConstraints: Bool { didSet { d.set(readerConstraints, forKey: "readerConstraints") } }
     @Published var readerSerif: Bool { didSet { d.set(readerSerif, forKey: "readerSerif") } }
     // spoilers
     @Published var hideTags: Bool { didSet { d.set(hideTags, forKey: "hideTags") } }
@@ -56,10 +55,9 @@ final class Settings: ObservableObject {
         supportPromptDone = d.object(forKey: "supportPromptDone") as? Bool ?? false
         readerHighlight = d.object(forKey: "readerHighlight") as? Bool ?? true
         readerSentences = d.object(forKey: "readerSentences") as? Bool ?? true
-        readerConstraints = d.object(forKey: "readerConstraints") as? Bool ?? true
         readerSerif = d.object(forKey: "readerSerif") as? Bool ?? false
-        hideTags = d.object(forKey: "hideTags") as? Bool ?? false
-        hideRating = d.object(forKey: "hideRating") as? Bool ?? false
+        hideTags = d.object(forKey: "hideTags") as? Bool ?? true
+        hideRating = d.object(forKey: "hideRating") as? Bool ?? true
         revealWhenSolved = d.object(forKey: "revealWhenSolved") as? Bool ?? true
         useDefaultBrowser = d.object(forKey: "useDefaultBrowser") as? Bool ?? true
         registeredLocal = d.array(forKey: "registeredLocal") as? [Int] ?? []

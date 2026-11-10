@@ -195,8 +195,8 @@ final class ReaderHost: NSObject, ObservableObject, WKScriptMessageHandler, WKNa
         run("window.cfReader.render(\(json(payload)))")
     }
 
-    func setPrefs(highlight: Bool, sentences: Bool, constraints: Bool, serif: Bool) {
-        run("window.cfReader.setPrefs({highlight: \(highlight), sentences: \(sentences), constraints: \(constraints), serif: \(serif)})")
+    func setPrefs(highlight: Bool, sentences: Bool, serif: Bool) {
+        run("window.cfReader.setPrefs({highlight: \(highlight), sentences: \(sentences), serif: \(serif)})")
     }
     func setTheme(_ name: String) { run("window.cfReader.setTheme(\(json(name)))") }
     func setFontSize(_ px: Double) { run("window.cfReader.setFontSize(\(px))") }
