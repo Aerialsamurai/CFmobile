@@ -85,7 +85,7 @@ struct TestsTab: View {
                 if let cid = app.current.contestId, let idx = app.current.index,
                    let url = URL(string: "https://codeforces.com/contest/\(cid)/submit/\(idx)") {
                     app.pendingSubmit = true
-                    UIApplication.shared.open(url)
+                    _ = await UIApplication.shared.open(url)
                 }
             }
         }
