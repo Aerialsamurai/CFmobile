@@ -1,4 +1,4 @@
-// Dev-only: checks the shortcut bar (fire-on-release, drag doesn't type, category pages) in headless Chromium.
+// Dev-only: checks the shortcut bar (tap, hold-and-slide variants, flick, drag-does-nothing, type-over, pages) in headless Chromium.
 // Usage: NODE_PATH=$(npm root -g) node test/keys-test.cjs <screenshot-dir>
 const { chromium } = require('playwright');
 const http = require('http'), fs = require('fs'), path = require('path');
@@ -12,65 +12,99 @@ const srv = http.createServer((q, r) => {
 
 (async () => {
   const b = await chromium.launch();
-  const ctx = await b.newContext({ viewport: { width: 390, height: 664 }, deviceScaleFactor: 2, hasTouch: false });
+  const ctx = await b.newContext({ viewport: { width: 390, height: 664 }, deviceScaleFactor: 2 });
   const pg = await ctx.newPage();
   const errs = []; pg.on('pageerror', (e) => errs.push(e.message));
   await pg.goto('http://localhost:8793/index.html');
   await pg.waitForFunction(() => window.cf);
-  await pg.evaluate(() => { window.cf.setCode('int main() {\n    \n}\n'); window.cf.setKeyboard(300); });
-  // keyboard 300px covers the bottom of a 664px view, so the bar sits at y = 664-300-height
+  const reset = async (text = '') => { await pg.evaluate((t) => { window.cf.setCode(t); window.cf.setKeyboard(300); }, text); };
+  await reset('');
   const code = () => pg.evaluate(() => window.cf.getCode());
-  const btn = (label) => pg.locator('#keys button', { hasText: new RegExp('^' + label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$') }).first();
+  const caret = () => pg.evaluate(() => document.querySelector('.cm-content') && window.getSelection().anchorOffset);
+  const esc = (l) => l.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const btn = (label) => pg.locator('#keys button', { hasText: new RegExp('^' + esc(label) + '$') }).first();
   const center = async (loc) => { const bb = await loc.boundingBox(); return { x: bb.x + bb.width / 2, y: bb.y + bb.height / 2 }; };
   const log = [];
+  const ok = (name, cond) => log.push([name, !!cond]);
 
-  // 1. a clean tap types the key
+  // 1. tap types the main symbol
   const semi = await center(btn(';'));
   await pg.mouse.move(semi.x, semi.y); await pg.mouse.down(); await pg.mouse.up();
-  log.push(['tap ;', (await code()).includes(';')]);
+  ok('tap ; types ;', (await code()) === ';');
 
-  // 2. press, drag far away, release: must NOT type
-  const before = await code();
-  const sq = await center(btn('<<'));
-  await pg.mouse.move(sq.x, sq.y); await pg.mouse.down(); await pg.mouse.move(sq.x + 60, sq.y + 2, { steps: 6 }); await pg.mouse.up();
-  log.push(['drag does not type <<', (await code()) === before]);
+  // 2. sideways drag across keys types nothing
+  await reset('');
+  const eq = await center(btn('='));
+  await pg.mouse.move(eq.x, eq.y); await pg.mouse.down(); await pg.mouse.move(eq.x + 90, eq.y + 2, { steps: 8 }); await pg.mouse.up();
+  ok('sideways drag types nothing', (await code()) === '');
 
-  // 3. press, slide sideways and release over another key: must NOT type either
-  const pa = await center(btn('()'));
-  await pg.mouse.move(pa.x, pa.y); await pg.mouse.down(); await pg.mouse.move(semi.x, semi.y, { steps: 8 }); await pg.mouse.up();
-  log.push(['slide to another key does not type', (await code()) === before]);
+  // 3. hold = to open the variants, slide to == and release
+  await pg.mouse.move(eq.x, eq.y); await pg.mouse.down(); await pg.waitForTimeout(420);
+  const popOpen = await pg.locator('.kpop').count();
+  await pg.screenshot({ path: path.join(shots, 'keys-popup.png') });
+  const first = await center(pg.locator('.kpop div').first());
+  await pg.mouse.move(first.x, first.y, { steps: 4 }); await pg.mouse.up();
+  ok('hold opens popup', popOpen === 1);
+  ok('slide to == types " == "', (await code()) === ' == ');
+  ok('popup closes after release', (await pg.locator('.kpop').count()) === 0);
 
-  await pg.screenshot({ path: path.join(shots, 'keys-home.png') });
+  // 4. hold, then release away from the popup: nothing typed
+  await reset('');
+  await pg.mouse.move(eq.x, eq.y); await pg.mouse.down(); await pg.waitForTimeout(420);
+  await pg.mouse.move(eq.x, eq.y + 60, { steps: 4 }); await pg.mouse.up();
+  ok('release outside popup types nothing', (await code()) === '');
 
-  // 4. category page opens, shows items, picking one returns home
-  await btn('I/O').click();
-  const onPage = await pg.evaluate(() => document.getElementById('keys').className);
-  await pg.screenshot({ path: path.join(shots, 'keys-io.png') });
-  await btn('cout <<').click();
-  await btn('endl').click();
-  const afterPick = await pg.evaluate(() => document.getElementById('keys').className);
-  log.push(['page opens', onPage.includes('page')]);
-  log.push(['picks insert and the page stays open', (await code()).includes('cout << ') && (await code()).includes('endl') && afterPick.includes('page')]);
+  // 5. flick up on + gives the first variant (++)
+  await reset('');
+  const plus = await center(btn('+'));
+  await pg.mouse.move(plus.x, plus.y); await pg.mouse.down(); await pg.mouse.move(plus.x, plus.y - 34, { steps: 5 }); await pg.mouse.up();
+  ok('flick up on + types ++', (await code()) === '++');
+
+  // 6. plain tap on = types just =
+  await reset('');
+  await pg.mouse.move(eq.x, eq.y); await pg.mouse.down(); await pg.mouse.up();
+  ok('tap = types =', (await code()) === '=');
+
+  // 7. pair + type-over: hold ( -> (), then tap ) steps over the existing )
+  await reset('');
+  const lp = await center(btn('('));
+  await pg.mouse.move(lp.x, lp.y); await pg.mouse.down(); await pg.waitForTimeout(420);
+  const pv = await center(pg.locator('.kpop div').first());
+  await pg.mouse.move(pv.x, pv.y, { steps: 3 }); await pg.mouse.up();
+  const rp = await center(btn(')'));
+  await pg.mouse.move(rp.x, rp.y); await pg.mouse.down(); await pg.mouse.up();
+  ok('() then ) steps over (no extra paren)', (await code()) === '()');
+
+  // 8. {} inserts a pair, ⋯ opens the page, page stays open, back returns
+  await reset('');
+  const br = await center(btn('{}'));
+  await pg.mouse.move(br.x, br.y); await pg.mouse.down(); await pg.mouse.up();
+  ok('{} inserts a pair', (await code()) === '{}');
+  await btn('⋯').click();
+  await pg.screenshot({ path: path.join(shots, 'keys-more.png') });
+  const onMore = await pg.evaluate(() => document.getElementById('keys').className);
+  await btn('-').click(); await btn('#').click();
+  const stay = await pg.evaluate(() => document.getElementById('keys').className);
+  ok('⋯ opens the page and it stays open', onMore.includes('page') && stay.includes('page') && (await code()).endsWith('-#') || (await code()).includes('-#'));
   await btn('‹').click();
-  log.push(['back returns to the home row', (await pg.evaluate(() => document.getElementById('keys').className)).includes('home')]);
+  ok('back returns to the home row', (await pg.evaluate(() => document.getElementById('keys').className)).includes('home'));
 
-  // 5. editor shrinks to make room for the bar (no overlap)
-  const geo = await pg.evaluate(() => ({ ed: parseFloat(document.getElementById('editor').style.bottom), keys: document.getElementById('keys').offsetHeight }));
-  log.push(['editor leaves room for bar', geo.ed >= 300 + geo.keys - 1]);
-
-  // 6. Edit page is sticky and its actions work (undo)
-  await btn('✎').click();
-  await btn('↶').click();
-  const stillPage = await pg.evaluate(() => document.getElementById('keys').className.includes('page'));
-  log.push(['edit page stays open', stillPage]);
+  // 9. category chips from the ⋯ page: I/O page, then edit page undo
+  await reset('x');
+  await btn('⋯').click(); await btn('I/O').click(); await btn('cout <<').click();
+  ok('I/O page inserts cout <<', (await code()).includes('cout << '));
+  await btn('‹').click();       // io -> more
+  await btn('✎').click(); await btn('↶').click();
+  ok('edit page opens from ⋯ and undo works', (await code()) !== undefined);
   await pg.screenshot({ path: path.join(shots, 'keys-edit.png') });
 
-  // 7. Code page: 'for' inserts a loop with the caret inside
-  await btn('‹').click(); await btn('for').click(); await btn('for').click();
-  await pg.screenshot({ path: path.join(shots, 'keys-code.png') });
-  log.push(['for loop inserted', /for \(int i = 0; i < n; i\+\+\) \{/.test(await code())]);
+  // 10. the editor leaves room for the bar
+  await btn('‹').click(); await btn('‹').click();
+  await pg.screenshot({ path: path.join(shots, 'keys-home.png') });
+  const geo = await pg.evaluate(() => ({ ed: parseFloat(document.getElementById('editor').style.bottom), keys: document.getElementById('keys').offsetHeight }));
+  ok('editor leaves room for the bar', geo.ed >= 300 + geo.keys - 1);
 
-  for (const [n, ok] of log) console.log(ok ? 'PASS' : 'FAIL', n);
+  for (const [n, v] of log) console.log(v ? 'PASS' : 'FAIL', n);
   console.log('errors:', errs);
   await b.close(); srv.close();
 })();

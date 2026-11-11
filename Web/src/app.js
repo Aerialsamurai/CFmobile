@@ -143,22 +143,29 @@ function jumpTo(line) {
 }
 
 // ---------- shortcut bar above the keyboard ----------
-// Two levels: a home row (quick keys + category buttons) and one page per category.
-// Keys fire on RELEASE and only if the finger hasn't moved, so scrolling/dragging never types anything.
-// item = [label, text, caretOffsetFromEnd?] inserts text; item = [label, null, 0, action] runs an editor command.
+// Home row = the symbols that save the most taps on the iPhone keyboard (measured on 871 real solutions, see tools/research).
+//   tap = main symbol · hold = popup with variants (slide, release) · flick up = first variant · ⋯ = everything else.
+// A key never fires while the finger is dragging sideways, so scrolling/dragging can't type by accident.
+// variant / item = [label, text, caretOffsetFromEnd?]
 const Q = (l, t, b = 0) => [l, t, b];
+const HOME = [
+  { l: ';', t: ';', v: [Q(':', ':'), Q('::', '::'), Q('?', '?')] },
+  { l: '(', t: '(', v: [Q('()', '()', -1)] },
+  { l: ')', t: ')', over: true, v: [Q(');', ');'), Q(') {', ') {'), Q('))', '))')] },
+  { l: '<', t: '<', v: [Q('<<', ' << '), Q('<=', ' <= '), Q('<>', '<>', -1)] },
+  { l: '>', t: '>', v: [Q('>>', ' >> '), Q('>=', ' >= '), Q('->', '->')] },
+  { l: '=', t: '=', v: [Q('==', ' == '), Q('!=', ' != '), Q('<=', ' <= '), Q('>=', ' >= ')] },
+  { l: '+', t: '+', v: [Q('++', '++'), Q('+=', ' += '), Q('-', '-'), Q('--', '--'), Q('*', '*'), Q('/', '/'), Q('%', '%')] },
+  { l: '{}', t: '{}', back: -1, v: [Q('{', '{'), Q('}', '}'), Q('{⏎}', '{\n\t\n}', -2)] },
+  { l: '[]', t: '[]', back: -1, v: [Q('[', '['), Q(']', ']')] },
+  { l: ',', t: ',', v: [Q('.', '.'), Q('_', '_'), Q('-', '-'), Q('"', '"'), Q("'", "'"), Q('#', '#')] },
+];
 const PAGES = {
-  br: { label: '[ <', items: [
-    Q('{', '{'), Q('}', '}'), Q('(', '('), Q(')', ')'), Q('[', '['), Q(']', ']'), Q('<', '<'), Q('>', '>'),
-    Q('{}', '{}', -1), Q('()', '()', -1), Q('[]', '[]', -1), Q('<>', '<>', -1), Q('""', '""', -1), Q("''", "''", -1),
-  ] },
-  op: { label: '+ =', items: [
-    Q('+', '+'), Q('-', '-'), Q('*', '*'), Q('/', '/'), Q('%', '%'), Q('=', '='), Q('++', '++'), Q('--', '--'),
-    Q('==', ' == '), Q('!=', ' != '), Q('<=', ' <= '), Q('>=', ' >= '), Q('+=', ' += '), Q('-=', ' -= '), Q('*=', ' *= '), Q('/=', ' /= '),
-  ] },
-  sy: { label: '& ?', items: [
-    Q('&&', ' && '), Q('||', ' || '), Q('!', '!'), Q('&', '&'), Q('|', '|'), Q('^', '^'), Q('~', '~'), Q('?', '?'),
-    Q(':', ':'), Q('::', '::'), Q('->', '->'), Q('.', '.'), Q(',', ','), Q('#', '#'), Q('_', '_'), Q('\\', '\\'),
+  more: { label: '⋯', items: [
+    Q('.', '.'), Q('_', '_'), Q('-', '-'), Q('"', '"'), Q("'", "'"), Q('#', '#'), Q('&', '&'), Q('|', '|'),
+    Q('^', '^'), Q('~', '~'), Q('!', '!'), Q(':', ':'), Q('::', '::'), Q('->', '->'), Q('*', '*'), Q('/', '/'),
+    Q('%', '%'), Q('\\', '\\'), Q('?', '?'), Q('&&', ' && '), Q('||', ' || '), Q('==', ' == '), Q('!=', ' != '),
+    ['I/O', null, 0, null, 'io'], ['for', null, 0, null, 'code'], ['✎', null, 0, null, 'ed'],
   ] },
   io: { label: 'I/O', chip: true, items: [
     Q('cin >>', 'cin >> '), Q('cout <<', 'cout << '), Q('>>', ' >> '), Q('<<', ' << '),
@@ -173,13 +180,12 @@ const PAGES = {
     Q('sort', 'sort(.begin(), .end());', -17), Q('.size()', '.size()'), Q('.push_back', '.push_back()', -1),
     Q('.begin,.end', '.begin(), .end()'), Q('.first', '.first'), Q('.second', '.second'), Q('auto', 'auto '), Q('long long', 'long long '),
   ] },
-  ed: { label: '✎', sticky: true, items: [
+  ed: { label: '✎', items: [
     ['⇥', null, 0, (v) => v.dispatch(v.state.replaceSelection(indentStr()))], ['↶', null, 0, (v) => undo(v)], ['↷', null, 0, (v) => redo(v)],
     ['//', null, 0, (v) => toggleComment(v)], ['⧉', null, 0, (v) => copyLineDown(v)], ['⌫ line', null, 0, (v) => deleteLine(v)],
     ['▢', null, 0, (v) => selectLine(v)], ['↑', null, 0, (v) => moveLineUp(v)], ['↓', null, 0, (v) => moveLineDown(v)],
   ] },
 };
-const QUICK = [Q(';', ';'), Q('{}', '{}', -1), Q('()', '()', -1), Q('<<', ' << ')];
 let keyPage = 'home';
 let keyboardH = 0;
 
@@ -189,12 +195,80 @@ function insertText(text, back = 0) {
   const line = view.state.doc.lineAt(sel.from);
   const lead = (line.text.match(/^\s*/) || [''])[0];
   const ins = text.replace(/\t/g, indentStr()).replace(/\n/g, '\n' + lead);
-  // caret offsets were written for 4-space indents; adjust if the user picked 2
-  const fix = back < 0 && text.includes('\t') ? 0 : 0;
-  view.dispatch({ changes: { from: sel.from, to: sel.to, insert: ins }, selection: { anchor: sel.from + ins.length + back + fix } });
+  view.dispatch({ changes: { from: sel.from, to: sel.to, insert: ins }, selection: { anchor: sel.from + ins.length + back } });
+}
+// ')' ']' '}' step over an identical character that is already there (e.g. after a pair was inserted)
+function typeKey(def) {
+  const sel = view.state.selection.main;
+  if (def.over && sel.empty && view.state.doc.sliceString(sel.from, sel.from + 1) === def.t) {
+    view.dispatch({ selection: { anchor: sel.from + 1 } });
+  } else insertText(def.t, def.back || 0);
 }
 
-// A press counts only if it is released on the same key without the finger moving (> 10px = a scroll/drag).
+// ---- hold popup ----
+let popup = null;
+function showPopup(btn, variants) {
+  closePopup();
+  const pop = document.createElement('div');
+  pop.className = 'kpop';
+  variants.forEach(([l]) => { const d = document.createElement('div'); d.textContent = l; pop.append(d); });
+  document.body.append(pop);
+  const r = btn.getBoundingClientRect();
+  const w = pop.offsetWidth;
+  pop.style.left = Math.max(4, Math.min(window.innerWidth - w - 4, r.left + r.width / 2 - w / 2)) + 'px';
+  pop.style.bottom = (window.innerHeight - r.top + 8) + 'px';
+  popup = { el: pop, key: r, sel: -1 };
+  return popup;
+}
+function popupSelect(x, y) {
+  if (!popup) return -1;
+  let hit = -1;
+  [...popup.el.children].forEach((c, i) => {
+    const r = c.getBoundingClientRect();
+    const on = x >= r.left - 2 && x <= r.right + 2 && y < popup.key.bottom + 14;
+    c.classList.toggle('on', on);
+    if (on) hit = i;
+  });
+  popup.sel = hit;
+  return hit;
+}
+function closePopup() { if (popup) { popup.el.remove(); popup = null; } }
+
+// A home key: tap / hold-and-slide / flick up.
+function bindKey(btn, def) {
+  let st = null;
+  const done = () => { if (st) clearTimeout(st.timer); st = null; btn.classList.remove('down'); closePopup(); };
+  btn.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    done();
+    try { btn.setPointerCapture(e.pointerId); } catch { /* keep receiving moves/up even after the finger leaves the key */ }
+    st = { x: e.clientX, y: e.clientY, moved: false, held: false };
+    btn.classList.add('down');
+    if (def.v && def.v.length) st.timer = setTimeout(() => { if (st) { st.held = true; buzz(); showPopup(btn, def.v); } }, 260);
+  });
+  btn.addEventListener('pointermove', (e) => {
+    if (!st) return;
+    if (st.held) { popupSelect(e.clientX, e.clientY); return; }
+    if (Math.hypot(e.clientX - st.x, e.clientY - st.y) > 10) { st.moved = true; clearTimeout(st.timer); }
+  });
+  btn.addEventListener('pointerup', (e) => {
+    if (!st) return;
+    const s = st, sel = popup ? popup.sel : -1;
+    done();
+    if (s.held) { if (sel >= 0) { buzz(); const [, t, b] = def.v[sel]; insertText(t, b || 0); } return; }
+    const dx = e.clientX - s.x, dy = e.clientY - s.y;
+    if (s.moved) {
+      // an intentional upward flick = first variant; any other drag types nothing
+      if (dy < -18 && Math.abs(dx) < Math.abs(dy) && def.v && def.v.length) { buzz(); const [, t, b] = def.v[0]; insertText(t, b || 0); }
+      return;
+    }
+    buzz(); typeKey(def);
+  });
+  btn.addEventListener('pointercancel', done);
+  btn.addEventListener('contextmenu', (e) => e.preventDefault());
+}
+
+// A page key: fires on release only if the finger didn't move.
 function bindPress(btn, fn) {
   let down = false, sx = 0, sy = 0;
   btn.addEventListener('pointerdown', (e) => { e.preventDefault(); down = true; sx = e.clientX; sy = e.clientY; btn.classList.add('down'); });
@@ -216,24 +290,30 @@ function applyKeyLayout() {
 
 function renderKeys() {
   const row = document.getElementById('keys');
+  closePopup();
   row.innerHTML = '';
   row.className = (keyboardH > 40 ? 'up ' : '') + (keyPage === 'home' ? 'home' : 'page');
   const add = (label, cls, fn) => { const b = document.createElement('button'); b.textContent = label; if (cls) b.className = cls; bindPress(b, fn); row.append(b); return b; };
 
   if (keyPage === 'home') {
-    for (const [l, t, b] of QUICK) add(l, '', () => { buzz(); insertText(t, b); });
-    for (const [id, pg] of Object.entries(PAGES)) {
-      if (pg.chip && !opts.chips) continue;
-      add(pg.label, 'cat', () => { buzz(); keyPage = id; renderKeys(); });
+    for (const def of HOME) {
+      const b = document.createElement('button');
+      b.textContent = def.l;
+      if (def.v && def.v.length) b.classList.add('hasv');
+      bindKey(b, def);
+      row.append(b);
     }
+    add('⋯', 'more', () => { buzz(); keyPage = 'more'; renderKeys(); });
   } else {
     const pg = PAGES[keyPage];
-    add('‹', 'back', () => { buzz(); keyPage = 'home'; renderKeys(); });
-    for (const [l, t, b, act] of pg.items) {
+    add('‹', 'back', () => { buzz(); keyPage = keyPage === 'more' ? 'home' : 'more'; renderKeys(); });
+    for (const [l, t, b, act, go] of pg.items) {
+      if (go && PAGES[go].chip && !opts.chips) continue;
       const long = l.length > 3;
-      add(l, long ? 'long' : '', () => {
+      add(l, go ? 'cat' : (long ? 'long' : ''), () => {
         buzz();
-        if (act) act(view); else insertText(t, b);   // stay on this page until the user taps ‹
+        if (go) { keyPage = go; renderKeys(); return; }
+        if (act) act(view); else insertText(t, b);          // stay on this page until the user taps ‹
       });
     }
   }
