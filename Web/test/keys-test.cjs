@@ -104,6 +104,27 @@ const srv = http.createServer((q, r) => {
   const geo = await pg.evaluate(() => ({ ed: parseFloat(document.getElementById('editor').style.bottom), keys: document.getElementById('keys').offsetHeight }));
   ok('editor leaves room for the bar', geo.ed >= 300 + geo.keys - 1);
 
+  // ---- keyboard must stay open: the editor keeps focus through every kind of key press ----
+  const focused = () => pg.evaluate(() => document.activeElement && document.activeElement.classList.contains('cm-content'));
+  await pg.evaluate(() => { window.cf.setCode(''); window.cf.setKeyboard(300); document.querySelector('.cm-content').focus(); });
+  ok('editor focused to start', await focused());
+  const s2 = await center(btn(';'));
+  await pg.mouse.move(s2.x, s2.y); await pg.mouse.down(); await pg.mouse.up();
+  ok('focus kept after a tap', await focused());
+  const e2 = await center(btn('='));
+  await pg.mouse.move(e2.x, e2.y); await pg.mouse.down(); await pg.waitForTimeout(420);
+  const v2 = await center(pg.locator('.kpop div').first());
+  await pg.mouse.move(v2.x, v2.y, { steps: 3 }); await pg.mouse.up();
+  ok('focus kept after hold-and-slide', await focused());
+  await btn('⋯').click(); await btn('-').click(); await btn('‹').click();
+  ok('focus kept through the ⋯ page', await focused());
+  // worst case: something steals focus in the middle of a key press (what closes the iOS keyboard)
+  const p2 = await center(btn('+'));
+  await pg.mouse.move(p2.x, p2.y); await pg.mouse.down();
+  await pg.evaluate(() => document.activeElement.blur());
+  await pg.mouse.up(); await pg.waitForTimeout(80);
+  ok('focus is taken back if it is stolen during a press', await focused());
+
   for (const [n, v] of log) console.log(v ? 'PASS' : 'FAIL', n);
   console.log('errors:', errs);
   await b.close(); srv.close();

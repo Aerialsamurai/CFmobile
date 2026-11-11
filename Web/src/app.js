@@ -188,6 +188,14 @@ const PAGES = {
 };
 let keyPage = 'home';
 let keyboardH = 0;
+// While a bar key is pressed (and briefly after), the editor must keep focus, otherwise iOS closes the keyboard.
+let barActive = false, barTimer = 0;
+function barPress(on) {
+  clearTimeout(barTimer);
+  if (on) barActive = true;
+  else barTimer = setTimeout(() => { barActive = false; }, 500);
+}
+function keepFocus() { if (view && !view.hasFocus) view.focus(); }
 
 const buzz = () => { if (opts.haptics) post({ t: 'haptic' }); };
 function insertText(text, back = 0) {
@@ -241,6 +249,7 @@ function bindKey(btn, def) {
   btn.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     done();
+    barPress(true);
     try { btn.setPointerCapture(e.pointerId); } catch { /* keep receiving moves/up even after the finger leaves the key */ }
     st = { x: e.clientX, y: e.clientY, moved: false, held: false };
     btn.classList.add('down');
@@ -252,29 +261,31 @@ function bindKey(btn, def) {
     if (Math.hypot(e.clientX - st.x, e.clientY - st.y) > 10) { st.moved = true; clearTimeout(st.timer); }
   });
   btn.addEventListener('pointerup', (e) => {
+    barPress(false);
     if (!st) return;
     const s = st, sel = popup ? popup.sel : -1;
     done();
-    if (s.held) { if (sel >= 0) { buzz(); const [, t, b] = def.v[sel]; insertText(t, b || 0); } return; }
+    if (s.held) { if (sel >= 0) { buzz(); const [, t, b] = def.v[sel]; insertText(t, b || 0); } keepFocus(); return; }
     const dx = e.clientX - s.x, dy = e.clientY - s.y;
     if (s.moved) {
       // an intentional upward flick = first variant; any other drag types nothing
       if (dy < -18 && Math.abs(dx) < Math.abs(dy) && def.v && def.v.length) { buzz(); const [, t, b] = def.v[0]; insertText(t, b || 0); }
+      keepFocus();
       return;
     }
-    buzz(); typeKey(def);
+    buzz(); typeKey(def); keepFocus();
   });
-  btn.addEventListener('pointercancel', done);
+  btn.addEventListener('pointercancel', () => { barPress(false); done(); });
   btn.addEventListener('contextmenu', (e) => e.preventDefault());
 }
 
 // A page key: fires on release only if the finger didn't move.
 function bindPress(btn, fn) {
   let down = false, sx = 0, sy = 0;
-  btn.addEventListener('pointerdown', (e) => { e.preventDefault(); down = true; sx = e.clientX; sy = e.clientY; btn.classList.add('down'); });
+  btn.addEventListener('pointerdown', (e) => { e.preventDefault(); barPress(true); down = true; sx = e.clientX; sy = e.clientY; btn.classList.add('down'); });
   btn.addEventListener('pointermove', (e) => { if (down && Math.hypot(e.clientX - sx, e.clientY - sy) > 10) { down = false; btn.classList.remove('down'); } });
-  btn.addEventListener('pointerup', () => { const fire = down; down = false; btn.classList.remove('down'); if (fire) fn(); });
-  const cancel = () => { down = false; btn.classList.remove('down'); };
+  btn.addEventListener('pointerup', () => { barPress(false); const fire = down; down = false; btn.classList.remove('down'); if (fire) { fn(); keepFocus(); } });
+  const cancel = () => { barPress(false); down = false; btn.classList.remove('down'); };
   btn.addEventListener('pointercancel', cancel);
   btn.addEventListener('pointerleave', cancel);
   btn.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -319,7 +330,18 @@ function renderKeys() {
   }
   applyKeyLayout();
 }
-function buildKeyRow() { keyPage = 'home'; renderKeys(); }
+function buildKeyRow() {
+  keyPage = 'home';
+  renderKeys();
+  const bar = document.getElementById('keys');
+  if (!bar.dataset.guard) {
+    bar.dataset.guard = '1';
+    // touchstart / mousedown are what make iOS move focus away from the editor (and close the keyboard)
+    ['touchstart', 'mousedown', 'click'].forEach((ev) => bar.addEventListener(ev, (e) => e.preventDefault(), { passive: false }));
+    // safety net: if the editor loses focus anyway while a bar key is down, take it straight back
+    view.contentDOM.addEventListener('blur', () => { if (barActive) setTimeout(keepFocus, 0); });
+  }
+}
 
 // ---------- public API (called from Swift via evaluateJavaScript) ----------
 window.cf = {
