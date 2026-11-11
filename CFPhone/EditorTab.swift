@@ -46,6 +46,10 @@ struct EditorTab: View {
                             Divider()
                             Button { settings.readerFontSize = min(26, settings.readerFontSize + 1) } label: { Label("Larger text", systemImage: "plus.magnifyingglass") }
                             Button { settings.readerFontSize = max(13, settings.readerFontSize - 1) } label: { Label("Smaller text", systemImage: "minus.magnifyingglass") }
+                            if let u = URL(string: app.current.url), !app.current.url.isEmpty {
+                                Divider()
+                                Button { Browser.open(u) } label: { Label("Open on Codeforces", systemImage: "safari") }
+                            }
                         } label: { Image(systemName: "textformat.size") }
                     } else {
                         if app.compiling {

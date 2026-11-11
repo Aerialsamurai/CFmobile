@@ -5,17 +5,22 @@ import WebKit
 /// login, problem import, submitting and contest registration.
 /// It uses the default (persistent) website data store, so the login survives app restarts.
 final class WebFlow: NSObject, ObservableObject, WKNavigationDelegate {
-    let webView = WKWebView(frame: .zero, configuration: WKWebViewConfiguration())
+    let webView: WKWebView
     @Published var title = ""
     @Published var loading = false
     @Published var currentURL = ""
     var onFinish: ((WKWebView) -> Void)?
 
     override init() {
+        let cfg = WKWebViewConfiguration()
+        // Identify as Mobile Safari for the phone's real iOS version (a bare web view, or a frozen old version string,
+        // can make Cloudflare / Codeforces show "browser not supported" pages).
+        let major = ProcessInfo.processInfo.operatingSystemVersion.majorVersion
+        cfg.applicationNameForUserAgent = "Version/\(major).0 Safari/605.1.15"
+        webView = WKWebView(frame: .zero, configuration: cfg)
         super.init()
         webView.navigationDelegate = self
         webView.allowsBackForwardNavigationGestures = true
-        webView.customUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
     }
 
     func load(_ url: URL) { webView.load(URLRequest(url: url)) }

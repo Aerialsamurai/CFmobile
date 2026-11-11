@@ -103,7 +103,7 @@ struct ContestsTab: View {
             registering = c
         } else {
             app.pendingRegistration = c
-            if let url = URL(string: "https://codeforces.com/contestRegistration/\(c.id)") { UIApplication.shared.open(url) }
+            if let url = URL(string: "https://codeforces.com/contestRegistration/\(c.id)") { Browser.open(url) }
         }
     }
 

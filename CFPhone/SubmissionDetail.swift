@@ -58,7 +58,7 @@ struct SubmissionDetailSheet: View {
                     if failed, detail == nil, let url = pageURL {
                         Text("Test details need the in-app Codeforces login (Profile ▸ ⚙︎ ▸ Log in). You can also view this submission in your browser.")
                             .font(.footnote).foregroundStyle(.secondary)
-                        Link(destination: url) { Label("Open submission in browser", systemImage: "safari") }.buttonStyle(.bordered)
+                        Button { Browser.open(url) } label: { Label("Open submission in browser", systemImage: "safari") }.buttonStyle(.bordered)
                     }
                     if needsBrowser {
                         Text("Codeforces wants a check first. Finish it below, then reopen this screen.").font(.footnote).foregroundStyle(.orange)
@@ -75,7 +75,7 @@ struct SubmissionDetailSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } }
                 ToolbarItem(placement: .primaryAction) {
-                    if let url = pageURL { Link(destination: url) { Label("Open in browser", systemImage: "safari") } }
+                    if let url = pageURL { Button { Browser.open(url) } label: { Label("Open in browser", systemImage: "safari") } }
                 }
             }
         }

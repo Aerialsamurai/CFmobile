@@ -26,7 +26,13 @@ struct SettingsTab: View {
                 }
 
                 Section {
-                    Toggle("Open Codeforces in my default browser", isOn: $settings.useDefaultBrowser)
+                    Toggle("Open Codeforces in my own browser", isOn: $settings.useDefaultBrowser)
+                    Picker("Browser", selection: $settings.externalBrowser) {
+                        ForEach(ExternalBrowser.allCases) { Text($0.title).tag($0.rawValue) }
+                    }
+                    Button("Test: open codeforces.com now") {
+                        if let u = URL(string: "https://codeforces.com") { Browser.open(u) }
+                    }
                 } header: { Text("Browser") } footer: {
                     Text("On: Register and Submit open Safari / Brave (choose it in iOS Settings ▸ your browser ▸ Default Browser App), so your saved passwords work. Submit copies your code first. Off: the app does it inside its own browser. You can still pick the other way for a single action (long-press Register, or choose in the Submit dialog).")
                 }
